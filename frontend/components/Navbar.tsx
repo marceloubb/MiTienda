@@ -1,50 +1,105 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useAuth } from '@/lib/auth-context';
-import { ShoppingCart, User, LogOut, Menu, X, Search } from 'lucide-react';
-import { useState } from 'react';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  ClipboardList,
+  Hammer,
+  LogOut,
+  Menu,
+  Search,
+  ShoppingCart,
+  User,
+  X,
+} from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { getCategories, Category } from "@/lib/api";
+import { getCategoryIconElement } from "@/lib/category-icons";
 
 export default function Navbar() {
   const { user, cart, logout } = useAuth();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCategories()
+      .then((data) => {
+        if (!cancelled) setCategories(data);
+      })
+      .catch(() => {
+        // El navbar no bloquea la navegación si el catálogo no responde.
+        if (!cancelled) setCategories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function handleSearchSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const query = searchQuery.trim();
+    router.push(
+      query ? `/products?search=${encodeURIComponent(query)}` : "/products"
+    );
+    setMobileMenuOpen(false);
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-[#1a1a1a] text-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 text-xl font-bold">
-            <span className="text-2xl">🔧</span>
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary">
+              <Hammer className="size-4 text-white" />
+            </span>
             <span>
-              Mi<span className="text-[#e65c00]">Tienda</span>
+              Mi<span className="text-primary">Tienda</span>
             </span>
           </Link>
 
-          {/* Barra de búsqueda - Prominente */}
-          <div className="hidden md:flex flex-1 max-w-xl mx-8">
+          {/* Búsqueda */}
+          <form
+            onSubmit={handleSearchSubmit}
+            role="search"
+            className="mx-8 hidden max-w-xl flex-1 md:flex"
+          >
             <div className="relative w-full">
+              <label htmlFor="navbar-search" className="sr-only">
+                Buscar productos
+              </label>
               <input
-                type="text"
+                id="navbar-search"
+                type="search"
                 placeholder="Buscar productos, herramientas, materiales..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-4 pr-12 py-2.5 rounded-lg bg-white text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#e65c00]"
+                className="w-full rounded-lg bg-surface-0 py-2.5 pr-12 pl-4 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-primary/50"
               />
-              <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#e65c00] text-white p-2 rounded-md hover:bg-[#cc5200] transition-colors">
-                <Search size={18} />
+              <button
+                type="submit"
+                aria-label="Buscar"
+                className="absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md bg-primary text-white transition-colors outline-none hover:bg-primary/80 focus-visible:ring-3 focus-visible:ring-white/50"
+              >
+                <Search className="size-4" />
               </button>
             </div>
-          </div>
+          </form>
 
           {/* Navegación */}
-          <nav className="hidden lg:flex items-center gap-6 text-sm">
-            <Link href="/" className="hover:text-[#e65c00] transition-colors">
+          <nav className="hidden items-center gap-6 text-sm lg:flex">
+            <Link href="/" className="transition-colors hover:text-primary">
               Inicio
             </Link>
-            <Link href="/products" className="hover:text-[#e65c00] transition-colors">
-              Productos
+            <Link
+              href="/products"
+              className="transition-colors hover:text-primary"
+            >
+              Catálogo
             </Link>
           </nav>
 
@@ -54,98 +109,134 @@ export default function Navbar() {
               <>
                 <Link
                   href="/cart"
-                  className="relative flex items-center gap-2 bg-[#2a2a2a] px-4 py-2 rounded-lg hover:bg-[#3a3a3a] transition-colors"
+                  className="relative flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 transition-colors hover:bg-white/20"
                 >
-                  <ShoppingCart size={20} />
-                  <span className="hidden sm:inline text-sm">Carrito</span>
+                  <ShoppingCart className="size-5" />
+                  <span className="hidden text-sm sm:inline">Carrito</span>
                   {cart && cart.total_items > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-[#e65c00] text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    <span className="absolute -top-2 -right-2 flex size-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
                       {cart.total_items}
                     </span>
                   )}
                 </Link>
 
                 <Link
-                  href="/profile"
-                  className="flex items-center gap-2 hover:text-[#e65c00] transition-colors"
+                  href="/orders"
+                  className="flex items-center gap-2 transition-colors hover:text-primary"
                 >
-                  <User size={20} />
-                  <span className="hidden sm:inline text-sm">{user.username}</span>
+                  <ClipboardList className="size-5" />
+                  <span className="hidden text-sm sm:inline">Mis pedidos</span>
+                </Link>
+
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-2 transition-colors hover:text-primary"
+                >
+                  <User className="size-5" />
+                  <span className="hidden text-sm sm:inline">
+                    {user.username}
+                  </span>
                 </Link>
 
                 <button
+                  type="button"
                   onClick={logout}
-                  className="hover:text-[#e65c00] transition-colors"
                   title="Cerrar sesión"
+                  aria-label="Cerrar sesión"
+                  className="transition-colors outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-white/50"
                 >
-                  <LogOut size={20} />
+                  <LogOut className="size-5" />
                 </button>
               </>
             ) : (
               <Link
                 href="/login"
-                className="bg-[#e65c00] text-white px-5 py-2 rounded-lg font-medium text-sm hover:bg-[#cc5200] transition-colors"
+                className="rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/80"
               >
                 Ingresar
               </Link>
             )}
 
             <button
-              className="lg:hidden"
+              type="button"
+              aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+              aria-expanded={mobileMenuOpen}
+              className="outline-none focus-visible:ring-3 focus-visible:ring-white/50 lg:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              {mobileMenuOpen ? (
+                <X className="size-6" />
+              ) : (
+                <Menu className="size-6" />
+              )}
             </button>
           </div>
         </div>
 
         {/* Menú móvil */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-[#3a3a3a]">
-            <div className="mb-4">
+          <div className="border-t border-white/10 py-4 lg:hidden">
+            <form onSubmit={handleSearchSubmit} role="search" className="mb-4">
+              <label htmlFor="navbar-search-mobile" className="sr-only">
+                Buscar productos
+              </label>
               <input
-                type="text"
+                id="navbar-search-mobile"
+                type="search"
                 placeholder="Buscar productos..."
-                className="w-full pl-4 pr-4 py-2.5 rounded-lg bg-white text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#e65c00]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg bg-surface-0 px-4 py-2.5 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-primary/50"
               />
-            </div>
-            <nav className="flex flex-col gap-3">
-              <Link href="/" className="hover:text-[#e65c00]" onClick={() => setMobileMenuOpen(false)}>
+            </form>
+            <nav className="flex flex-col gap-3 text-sm">
+              <Link
+                href="/"
+                className="transition-colors hover:text-primary"
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 Inicio
               </Link>
-              <Link href="/products" className="hover:text-[#e65c00]" onClick={() => setMobileMenuOpen(false)}>
-                Productos
+              <Link
+                href="/products"
+                className="transition-colors hover:text-primary"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Catálogo
               </Link>
+              {user && (
+                <Link
+                  href="/orders"
+                  className="transition-colors hover:text-primary"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Mis pedidos
+                </Link>
+              )}
             </nav>
           </div>
         )}
       </div>
 
       {/* Barra de categorías */}
-      <div className="bg-[#2a2a2a] border-t border-[#3a3a3a]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-6 py-2 text-sm overflow-x-auto">
-            <Link href="/products?category=1" className="whitespace-nowrap hover:text-[#e65c00] transition-colors">
-              🔨 Herramientas
-            </Link>
-            <Link href="/products?category=2" className="whitespace-nowrap hover:text-[#e65c00] transition-colors">
-              ⚡ Electricidad
-            </Link>
-            <Link href="/products?category=3" className="whitespace-nowrap hover:text-[#e65c00] transition-colors">
-              🪛 Fijaciones
-            </Link>
-            <Link href="/products?category=4" className="whitespace-nowrap hover:text-[#e65c00] transition-colors">
-              🚿 Plomería
-            </Link>
-            <Link href="/products?category=5" className="whitespace-nowrap hover:text-[#e65c00] transition-colors">
-              🎨 Pinturas
-            </Link>
-            <Link href="/products?category=6" className="whitespace-nowrap hover:text-[#e65c00] transition-colors">
-              🏗️ Construcción
-            </Link>
+      {categories.length > 0 && (
+        <div className="border-t border-white/10 bg-white/5">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-6 overflow-x-auto py-2 text-sm">
+              {categories.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/products?category=${category.id}`}
+                  className="flex items-center gap-1.5 whitespace-nowrap transition-colors hover:text-primary"
+                >
+                  {getCategoryIconElement(category.name, "size-4")}
+                  {category.name}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </header>
   );
 }

@@ -1,41 +1,48 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { register as apiRegister } from '@/lib/api';
-import { useAuth } from '@/lib/auth-context';
-import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { AlertTriangle, Loader2, ShoppingBag, UserPlus } from "lucide-react";
+import { register as apiRegister } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+const inputClass =
+  "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    first_name: '',
-    last_name: '',
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    first_name: "",
+    last_name: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Las contraseñas no coinciden');
+      setError("Las contraseñas no coinciden.");
       return;
     }
 
     if (formData.password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres');
+      setError("La contraseña debe tener al menos 8 caracteres.");
       return;
     }
 
@@ -50,138 +57,168 @@ export default function RegisterPage() {
         last_name: formData.last_name,
       });
       login(data.token, data.user);
-      router.push('/');
-    } catch (err) {
-      setError('Error al registrar. Verifica los datos ingresados.');
+      router.push("/");
+    } catch {
+      setError("Error al registrar. Verifica los datos ingresados.");
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-8">
+    <div className="flex min-h-[80vh] items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          <div className="text-center mb-8">
-            <span className="text-4xl">🛍️</span>
-            <h1 className="text-2xl font-bold text-gray-800 mt-4">Crear Cuenta</h1>
-            <p className="text-gray-500 mt-2">Regístrate para empezar a comprar</p>
+        <Card className="gap-6 p-8">
+          <div className="text-center">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10">
+              <ShoppingBag className="size-7 text-primary" />
+            </div>
+            <h1 className="mt-4 text-2xl font-bold text-foreground">
+              Crear cuenta
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Regístrate para empezar a comprar
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
-                {error}
+              <div
+                role="alert"
+                aria-live="polite"
+                className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+              >
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="first_name" className={labelClass}>
                   Nombre
                 </label>
                 <input
+                  id="first_name"
                   type="text"
                   name="first_name"
                   value={formData.first_name}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                  className={inputClass}
+                  autoComplete="given-name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="last_name" className={labelClass}>
                   Apellido
                 </label>
                 <input
+                  id="last_name"
                   type="text"
                   name="last_name"
                   value={formData.last_name}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                  className={inputClass}
+                  autoComplete="family-name"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="username" className={labelClass}>
                 Usuario
               </label>
               <input
+                id="username"
                 type="text"
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                className={inputClass}
+                autoComplete="username"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email" className={labelClass}>
                 Email
               </label>
               <input
+                id="email"
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                className={inputClass}
+                autoComplete="email"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className={labelClass}>
                 Contraseña
               </label>
               <input
+                id="password"
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                className={inputClass}
+                autoComplete="new-password"
                 required
                 minLength={8}
               />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Mínimo 8 caracteres.
+              </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Confirmar Contraseña
+              <label htmlFor="confirmPassword" className={labelClass}>
+                Confirmar contraseña
               </label>
               <input
+                id="confirmPassword"
                 type="password"
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                className={inputClass}
+                autoComplete="new-password"
                 required
               />
             </div>
 
-            <button
+            <Button
               type="submit"
+              size="lg"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-violet-600 to-purple-600 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="w-full"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="animate-spin" size={20} />
+                  <Loader2 className="animate-spin" />
                   Creando cuenta...
                 </>
               ) : (
-                'Crear Cuenta'
+                <>
+                  <UserPlus />
+                  Crear cuenta
+                </>
               )}
-            </button>
+            </Button>
           </form>
 
-          <p className="text-center mt-6 text-gray-500">
-            ¿Ya tienes cuenta?{' '}
-            <Link href="/login" className="text-violet-600 font-medium hover:text-violet-700">
+          <p className="text-center text-sm text-muted-foreground">
+            ¿Ya tienes cuenta?{" "}
+            <Link href="/login" className="font-medium text-primary hover:underline">
               Inicia sesión
             </Link>
           </p>
-        </div>
+        </Card>
       </div>
     </div>
   );

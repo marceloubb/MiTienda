@@ -1,81 +1,84 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import { createOrderFromCart } from '@/lib/api';
-import { Loader2, CreditCard, Truck, CheckCircle, Package } from 'lucide-react';
-import Link from 'next/link';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Banknote,
+  CheckCircle,
+  CreditCard,
+  Loader2,
+  Package,
+  ShieldCheck,
+  Truck,
+  UserRound,
+  Wallet,
+} from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { createOrderFromCart, Cart, User } from "@/lib/api";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { sileo } from "sileo";
+
+const PAYMENT_METHODS = [
+  {
+    value: "credit_card",
+    label: "Tarjeta de crédito",
+    description: "Visa, Mastercard, American Express",
+    icon: CreditCard,
+  },
+  {
+    value: "debit_card",
+    label: "Tarjeta de débito",
+    description: "Débito directo de tu banco",
+    icon: CreditCard,
+  },
+  {
+    value: "paypal",
+    label: "PayPal",
+    description: "Paga con tu cuenta PayPal",
+    icon: Wallet,
+  },
+  {
+    value: "cash",
+    label: "Efectivo contra entrega",
+    description: "Paga al recibir tu pedido",
+    icon: Banknote,
+  },
+];
+
+const inputClass =
+  "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
 export default function CheckoutPage() {
-  const { user, token, cart, updateCart } = useAuth();
+  const { user, cart, isLoading } = useAuth();
   const router = useRouter();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [orderComplete, setOrderComplete] = useState(false);
   const [orderId, setOrderId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    shipping_name: '',
-    shipping_address: '',
-    shipping_city: '',
-    shipping_postal_code: '',
-    shipping_phone: '',
-    payment_method: 'credit_card',
-    notes: '',
-  });
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
+    if (!isLoading && !user) {
+      router.push("/login");
     }
-  }, [user, router]);
+  }, [user, isLoading, router]);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  if (orderId !== null) {
+    return <OrderConfirmation orderId={orderId} />;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!token || !cart) return;
-
-    setIsProcessing(true);
-
-    try {
-      const order = await createOrderFromCart(token, formData);
-      setOrderId(order.id);
-      setOrderComplete(true);
-      updateCart({ ...cart, items: [], total: '0', total_items: 0 });
-    } catch (err) {
-      alert('Error al procesar el pedido');
-    } finally {
-      setIsProcessing(false);
-    }
-  }
-
-  if (!user || !cart || !cart.items) {
-    return null;
-  }
-
-  if (orderComplete) {
+  if (isLoading || !user || !cart) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <div className="bg-white rounded-2xl border border-[#e0e0e0] p-12">
-          <div className="w-20 h-20 bg-[#2e7d32] rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle size={40} className="text-white" />
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <Skeleton className="h-7 w-52" aria-hidden="true" />
+        <div className="mt-6 grid gap-6 md:grid-cols-3">
+          <div className="space-y-6 md:col-span-2">
+            <Skeleton className="h-80 w-full rounded-xl" aria-hidden="true" />
+            <Skeleton className="h-64 w-full rounded-xl" aria-hidden="true" />
           </div>
-          <h1 className="text-3xl font-bold text-[#1a1a1a] mb-4">¡Pedido Realizado!</h1>
-          <p className="text-[#666666] mb-2">
-            Tu pedido <span className="font-bold text-[#1a1a1a]">#{orderId}</span> ha sido procesado correctamente.
-          </p>
-          <p className="text-[#666666] mb-8">
-            Recibirás un correo electrónico con los detalles de tu compra.
-          </p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 bg-[#e65c00] text-white px-8 py-3 rounded-lg font-bold hover:bg-[#cc5200] transition-colors"
-          >
-            <Package size={20} />
-            Volver a la Tienda
-          </Link>
+          <Skeleton className="h-96 w-full rounded-xl" aria-hidden="true" />
         </div>
       </div>
     );
@@ -83,229 +86,378 @@ export default function CheckoutPage() {
 
   if (cart.items.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <div className="bg-white rounded-2xl border border-[#e0e0e0] p-12">
-          <Package size={64} className="mx-auto text-[#e0e0e0] mb-4" />
-          <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2">Tu carrito está vacío</h1>
-          <p className="text-[#666666] mb-6">Agrega productos antes de continuar.</p>
+      <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
+        <Card className="w-full p-12 text-center">
+          <Package className="mx-auto size-12 text-muted-foreground/50" />
+          <h1 className="mt-4 text-xl font-bold text-foreground">
+            Tu carrito está vacío
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Agrega productos antes de continuar con el pago.
+          </p>
           <Link
-            href="/"
-            className="inline-flex items-center gap-2 bg-[#e65c00] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#cc5200] transition-colors"
+            href="/products"
+            className={buttonVariants({ size: "lg", className: "mt-6" })}
           >
-            Ver Productos
+            Ver catálogo
           </Link>
-        </div>
+        </Card>
       </div>
     );
   }
 
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-[#1a1a1a] mb-6">Finalizar Compra</h1>
+  return <CheckoutForm user={user} cart={cart} onOrderComplete={setOrderId} />;
+}
 
-      <div className="md:flex gap-8">
-        <div className="md:w-2/3">
+function CheckoutForm({
+  user,
+  cart,
+  onOrderComplete,
+}: {
+  user: User;
+  cart: Cart;
+  onOrderComplete: (orderId: number) => void;
+}) {
+  const { token, updateCart } = useAuth();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [formData, setFormData] = useState(() => ({
+    shipping_name: `${user.first_name} ${user.last_name}`.trim(),
+    shipping_address: user.profile?.address ?? "",
+    shipping_city: user.profile?.city ?? "",
+    shipping_postal_code: user.profile?.postal_code ?? "",
+    shipping_phone: user.profile?.phone ?? "",
+    payment_method: "credit_card",
+    notes: "",
+  }));
+
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+
+    setIsProcessing(true);
+    try {
+      const order = await createOrderFromCart(token, formData);
+      updateCart({ ...cart, items: [], total: "0", total_items: 0 });
+      onOrderComplete(order.id);
+    } catch {
+      sileo.error({
+        title: "Error al procesar el pedido",
+        description: "Revisa tus datos e inténtalo de nuevo.",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <h1 className="text-2xl font-bold text-foreground">Finalizar compra</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Completa tus datos de envío y elige cómo quieres pagar.
+      </p>
+
+      <div className="mt-6 grid gap-6 md:grid-cols-3">
+        <div className="md:col-span-2">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Información de envío */}
-            <div className="bg-white rounded-xl border border-[#e0e0e0] p-6">
-              <h2 className="text-lg font-bold text-[#1a1a1a] mb-4 flex items-center gap-2">
-                <Truck size={20} className="text-[#e65c00]" />
-                Información de Envío
+            {/* Envío */}
+            <Card className="gap-4 p-6">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
+                <Truck className="size-5 text-primary" />
+                Información de envío
               </h2>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  <label htmlFor="shipping_name" className={labelClass}>
                     Nombre completo
                   </label>
                   <input
+                    id="shipping_name"
                     type="text"
                     name="shipping_name"
                     value={formData.shipping_name}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-[#e0e0e0] rounded-lg focus:ring-2 focus:ring-[#e65c00] focus:border-transparent outline-none"
+                    className={inputClass}
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  <label htmlFor="shipping_address" className={labelClass}>
                     Dirección
                   </label>
                   <input
+                    id="shipping_address"
                     type="text"
                     name="shipping_address"
                     value={formData.shipping_address}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-[#e0e0e0] rounded-lg focus:ring-2 focus:ring-[#e65c00] focus:border-transparent outline-none"
                     placeholder="Calle, número, colonia..."
+                    className={inputClass}
                     required
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                    <label htmlFor="shipping_city" className={labelClass}>
                       Ciudad
                     </label>
                     <input
+                      id="shipping_city"
                       type="text"
                       name="shipping_city"
                       value={formData.shipping_city}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-[#e0e0e0] rounded-lg focus:ring-2 focus:ring-[#e65c00] focus:border-transparent outline-none"
+                      className={inputClass}
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
-                      Código Postal
+                    <label htmlFor="shipping_postal_code" className={labelClass}>
+                      Código postal
                     </label>
                     <input
+                      id="shipping_postal_code"
                       type="text"
                       name="shipping_postal_code"
                       value={formData.shipping_postal_code}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-[#e0e0e0] rounded-lg focus:ring-2 focus:ring-[#e65c00] focus:border-transparent outline-none"
+                      className={inputClass}
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  <label htmlFor="shipping_phone" className={labelClass}>
                     Teléfono
                   </label>
                   <input
+                    id="shipping_phone"
                     type="tel"
                     name="shipping_phone"
                     value={formData.shipping_phone}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-[#e0e0e0] rounded-lg focus:ring-2 focus:ring-[#e65c00] focus:border-transparent outline-none"
                     placeholder="10 dígitos"
+                    className={inputClass}
                     required
                   />
                 </div>
               </div>
-            </div>
+            </Card>
 
-            {/* Método de pago */}
-            <div className="bg-white rounded-xl border border-[#e0e0e0] p-6">
-              <h2 className="text-lg font-bold text-[#1a1a1a] mb-4 flex items-center gap-2">
-                <CreditCard size={20} className="text-[#e65c00]" />
-                Método de Pago
+            {/* Pago */}
+            <Card className="gap-4 p-6">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
+                <CreditCard className="size-5 text-primary" />
+                Método de pago
               </h2>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
-                    Selecciona método de pago
-                  </label>
-                  <select
-                    name="payment_method"
-                    value={formData.payment_method}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-[#e0e0e0] rounded-lg focus:ring-2 focus:ring-[#e65c00] focus:border-transparent outline-none bg-white"
-                  >
-                    <option value="credit_card">💳 Tarjeta de Crédito</option>
-                    <option value="debit_card">💳 Tarjeta de Débito</option>
-                    <option value="paypal">🅿️ PayPal</option>
-                    <option value="cash">💵 Efectivo contra entrega</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
-                    Notas (opcional)
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-4 py-3 border border-[#e0e0e0] rounded-lg focus:ring-2 focus:ring-[#e65c00] focus:border-transparent outline-none resize-none"
-                    placeholder="Instrucciones especiales de entrega..."
-                  />
-                </div>
+              <div
+                role="radiogroup"
+                aria-label="Método de pago"
+                className="space-y-3"
+              >
+                {PAYMENT_METHODS.map((method) => {
+                  const Icon = method.icon;
+                  const isSelected = formData.payment_method === method.value;
+                  return (
+                    <button
+                      key={method.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          payment_method: method.value,
+                        }))
+                      }
+                      className={`flex w-full items-center gap-3 rounded-lg border p-4 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${
+                        isSelected
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-surface-1"
+                      }`}
+                    >
+                      <Icon
+                        className={`size-5 shrink-0 ${
+                          isSelected ? "text-primary" : "text-muted-foreground"
+                        }`}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium text-foreground">
+                          {method.label}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {method.description}
+                        </span>
+                      </span>
+                      <span
+                        className={`size-4 shrink-0 rounded-full border-2 ${
+                          isSelected
+                            ? "border-primary bg-primary"
+                            : "border-border"
+                        }`}
+                      />
+                    </button>
+                  );
+                })}
               </div>
-            </div>
 
-            <button
+              <div>
+                <label htmlFor="notes" className={labelClass}>
+                  Notas (opcional)
+                </label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder="Instrucciones especiales de entrega..."
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+            </Card>
+
+            <Button
               type="submit"
+              size="lg"
               disabled={isProcessing}
-              className="w-full bg-[#e65c00] text-white py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-2 hover:bg-[#cc5200] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full"
             >
               {isProcessing ? (
                 <>
-                  <Loader2 className="animate-spin" size={24} />
+                  <Loader2 className="animate-spin" />
                   Procesando pedido...
                 </>
               ) : (
                 <>
-                  <CheckCircle size={24} />
-                  Confirmar Pedido
+                  <CheckCircle />
+                  Confirmar pedido
                 </>
               )}
-            </button>
+            </Button>
           </form>
         </div>
 
-        {/* Resumen del pedido */}
-        <div className="md:w-1/3 mt-6 md:mt-0">
-          <div className="bg-white rounded-xl border border-[#e0e0e0] p-6 sticky top-24">
-            <h2 className="text-lg font-bold text-[#1a1a1a] mb-4">Resumen del Pedido</h2>
+        {/* Resumen */}
+        <div className="md:col-span-1">
+          <Card className="sticky top-24 gap-4 p-6">
+            <h2 className="text-lg font-bold text-foreground">
+              Resumen del pedido
+            </h2>
 
-            {/* Lista de productos */}
-            <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
+            <div className="max-h-60 space-y-3 overflow-y-auto">
               {cart.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-[#f5f5f5] rounded-lg flex-shrink-0 overflow-hidden">
+                  <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-surface-1">
                     {item.product.image ? (
                       <img
                         src={item.product.image}
                         alt={item.product.name}
-                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Package size={16} className="text-[#999999]" />
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Package className="size-4 text-muted-foreground/60" />
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1a1a1a] truncate">{item.product.name}</p>
-                    <p className="text-xs text-[#666666]">x{item.quantity}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-1 text-sm font-medium text-foreground">
+                      {item.product.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      x{item.quantity}
+                    </p>
                   </div>
-                  <p className="text-sm font-bold">${parseFloat(item.subtotal).toFixed(2)}</p>
+                  <p className="text-sm font-bold text-foreground">
+                    ${parseFloat(item.subtotal).toFixed(2)}
+                  </p>
                 </div>
               ))}
             </div>
 
-            <div className="border-t border-[#e0e0e0] pt-4 space-y-3">
+            <Separator />
+
+            <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-[#666666]">Subtotal ({cart.total_items} productos)</span>
-                <span className="font-medium">${parseFloat(cart.total).toFixed(2)}</span>
+                <span className="text-muted-foreground">
+                  Subtotal ({cart.total_items})
+                </span>
+                <span className="font-medium text-foreground">
+                  ${parseFloat(cart.total).toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[#666666]">Envío</span>
-                <span className="font-medium text-[#2e7d32]">Gratis</span>
-              </div>
-              <div className="flex justify-between text-xl font-bold pt-3 border-t border-[#e0e0e0]">
-                <span>Total</span>
-                <span className="text-[#e65c00]">${parseFloat(cart.total).toFixed(2)}</span>
+                <span className="text-muted-foreground">Envío</span>
+                <span className="font-medium text-stock">Gratis</span>
               </div>
             </div>
 
-            {/* Información de seguridad */}
-            <div className="mt-6 pt-4 border-t border-[#e0e0e0]">
-              <div className="flex items-center gap-2 text-xs text-[#666666]">
-                <span>🔒</span>
-                <span>Compra segura y protegida</span>
-              </div>
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <span className="text-base font-bold text-foreground">Total</span>
+              <span className="text-2xl font-bold text-primary">
+                ${parseFloat(cart.total).toFixed(2)}
+              </span>
             </div>
-          </div>
+
+            <div className="flex items-center gap-2 rounded-lg bg-surface-1 p-3 text-xs text-muted-foreground">
+              <ShieldCheck className="size-4 shrink-0 text-stock" />
+              <span>Compra segura y protegida</span>
+            </div>
+          </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+function OrderConfirmation({ orderId }: { orderId: number }) {
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
+      <Card className="w-full p-12 text-center">
+        <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-stock">
+          <CheckCircle className="size-10 text-white" />
+        </div>
+        <h1 className="mt-6 text-2xl font-bold text-foreground">
+          Pedido realizado
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Tu pedido{" "}
+          <span className="font-bold text-foreground">#{orderId}</span> se
+          procesó correctamente.
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Recibirás un correo con los detalles de tu compra.
+        </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-2">
+          <Link
+            href="/profile"
+            className={buttonVariants({ size: "lg" })}
+          >
+            <UserRound />
+            Ir a mi perfil
+          </Link>
+          <Link
+            href="/products"
+            className={buttonVariants({ variant: "outline", size: "lg" })}
+          >
+            Seguir comprando
+          </Link>
+        </div>
+      </Card>
     </div>
   );
 }
