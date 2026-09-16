@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Cart, CartItem, Order, OrderItem
+from products.models import Product
 from products.serializers import ProductListSerializer
 
 
@@ -26,6 +27,28 @@ class CartSerializer(serializers.ModelSerializer):
 class AddToCartSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     quantity = serializers.IntegerField(default=1, min_value=1)
+
+
+def _check_stock(product_id, quantity):
+    """Fetch active product and raise ValidationError when stock is insufficient."""
+    try:
+        product = Product.objects.get(id=product_id, is_active=True)
+    except Product.DoesNotExist:
+        raise serializers.ValidationError("Producto no disponible")
+    if product.stock < quantity:
+        raise serializers.ValidationError("Stock insuficiente")
+    return product
+
+
+class UpdateCartItemSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1)
+
+    def validate_quantity(self, value):
+        product_id = self.initial_data.get('product_id')
+        if isinstance(product_id, int) and not isinstance(product_id, bool):
+            _check_stock(product_id, value)
+        return value
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
