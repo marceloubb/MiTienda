@@ -9,12 +9,9 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Token ${token}` } : {}),
     ...options.headers,
   };
-
-  if (token) {
-    headers['Authorization'] = `Token ${token}`;
-  }
 
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...fetchOptions,
