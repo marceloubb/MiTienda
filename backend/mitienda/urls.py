@@ -1,0 +1,34 @@
+from django.contrib import admin
+from django.urls import path, include
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def api_root(request):
+    return Response({
+        'message': 'API de MiTienda',
+        'endpoints': {
+            'products': '/api/products/',
+            'categories': '/api/categories/',
+            'cart': '/api/cart/',
+            'orders': '/api/orders/',
+            'users': {
+                'register': '/api/users/register/',
+                'login': '/api/users/login/',
+                'profile': '/api/users/profile/',
+                'logout': '/api/users/logout/',
+            }
+        }
+    })
+
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', api_root, name='api-root'),
+    path('api/', include('products.urls')),
+    path('api/', include('orders.urls')),
+    path('api/users/', include('users.urls')),
+]

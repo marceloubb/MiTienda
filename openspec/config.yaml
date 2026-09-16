@@ -1,0 +1,5 @@
+schema: spec-driven
+
+# Artifact store declaration
+# Values: openspec | engram | hybrid | none
+artifact_store: engram
