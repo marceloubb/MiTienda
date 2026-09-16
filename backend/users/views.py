@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
-from .serializers import UserSerializer, RegisterSerializer, UserProfileSerializer
+from .serializers import UserSerializer, RegisterSerializer, UserProfileSerializer, UpdateProfileSerializer
 from .models import UserProfile
 
 
@@ -52,29 +52,15 @@ class ProfileView(APIView):
         return Response(serializer.data)
 
     def put(self, request):
-        user = request.user
-        user.first_name = request.data.get('first_name', user.first_name)
-        user.last_name = request.data.get('last_name', user.last_name)
-        user.email = request.data.get('email', user.email)
-        user.save()
-
-        # Actualizar perfil
-        profile, created = UserProfile.objects.get_or_create(user=user)
-        profile.phone = request.data.get('phone', profile.phone)
-        profile.address = request.data.get('address', profile.address)
-        profile.city = request.data.get('city', profile.city)
-        profile.postal_code = request.data.get('postal_code', profile.postal_code)
-        profile.save()
-
-        return Response(UserSerializer(user).data)
+        serializer = UpdateProfileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(UserSerializer(request.user).data)
 
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        try:
-            request.user.auth_token.delete()
-        except:
-            pass
+        Token.objects.filter(user=request.user).delete()
         return Response({'message': 'Sesión cerrada'}, status=status.HTTP_200_OK)

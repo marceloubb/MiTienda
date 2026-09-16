@@ -44,3 +44,28 @@ class RegisterSerializer(serializers.Serializer):
         )
         UserProfile.objects.create(user=user)
         return user
+
+
+class UpdateProfileSerializer(serializers.Serializer):
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
+    city = serializers.CharField(required=False, allow_blank=True)
+    postal_code = serializers.CharField(required=False, allow_blank=True)
+
+    def save(self, user):
+        data = self.validated_data
+        # Update User fields
+        for field in ('first_name', 'last_name', 'email'):
+            if field in data:
+                setattr(user, field, data[field])
+        user.save()
+        # Update Profile fields
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        for field in ('phone', 'address', 'city', 'postal_code'):
+            if field in data:
+                setattr(profile, field, data[field])
+        profile.save()
+        return user

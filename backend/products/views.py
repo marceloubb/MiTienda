@@ -1,21 +1,40 @@
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 from django.db import models
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Category, Product
 from .serializers import CategorySerializer, ProductSerializer, ProductListSerializer
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
+class IsStaffOrReadOnly(BasePermission):
+    """Allow read-only access to everyone; writes require a staff user."""
+
+    def has_permission(self, request, view):
+        return request.method in SAFE_METHODS or (request.user and request.user.is_staff)
+
+
+class StaffWriteDeniedViewMixin:
+    """Force 403 for denied writes (DRF defaults to 401 when unauthenticated)."""
+
+    def permission_denied(self, request, message=None, code=None):
+        raise PermissionDenied(detail=message, code=code)
+
+
+class CategoryViewSet(StaffWriteDeniedViewMixin, viewsets.ModelViewSet):
     queryset = Category.objects.filter(is_active=True)
     serializer_class = CategorySerializer
+    permission_classes = [IsStaffOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'description']
 
 
-class ProductViewSet(viewsets.ModelViewSet):
+class ProductViewSet(StaffWriteDeniedViewMixin, viewsets.ModelViewSet):
     queryset = Product.objects.filter(is_active=True).select_related('category')
+    serializer_class = ProductSerializer
+    permission_classes = [IsStaffOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category', 'is_featured']
     search_fields = ['name', 'description']
