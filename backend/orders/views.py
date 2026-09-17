@@ -12,7 +12,7 @@ from .serializers import (
     OrderSerializer, CreateOrderSerializer, OrderItemSerializer,
     StaffOrderSerializer, UpdateCartItemSerializer,
 )
-from users.permissions import IsAdmin, IsStaffRole, get_user_role
+from users.permissions import IsAdmin, IsBodega, IsStaffRole, get_user_role
 
 
 # Transition matrix per role: the single next status for each from-status.
@@ -219,6 +219,11 @@ class StaffOrderViewSet(viewsets.ReadOnlyModelViewSet):
 
         with transaction.atomic():
             order = get_object_or_404(Order.objects.select_for_update(), pk=pk)
+            if order.status == 'discrepancy':
+                return Response(
+                    {'error': 'Un pedido con discrepancia no puede avanzar.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
             target = transitions.get(order.status)
             if target is None or (requested is not None and requested != target):
                 return Response(
@@ -227,6 +232,74 @@ class StaffOrderViewSet(viewsets.ReadOnlyModelViewSet):
                 )
             order.status = target
             order.save(update_fields=['status', 'updated_at'])
+        return Response(StaffOrderSerializer(order).data)
+
+    @action(detail=True, methods=['post'])
+    def discrepancy(self, request, pk=None):
+        """Bodega/admin flag: mark an order with a reason and block flow.
+
+        Only pending, processing, and ready orders can be flagged; the
+        current status is stored so admin resolution can return to it.
+        """
+        if not (IsAdmin().has_permission(request, self)
+                or IsBodega().has_permission(request, self)):
+            return Response(
+                {'error': 'Requiere rol de administrador o bodega.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        get_object_or_404(Order, pk=pk)
+
+        with transaction.atomic():
+            order = get_object_or_404(Order.objects.select_for_update(), pk=pk)
+            if order.status == 'discrepancy':
+                return Response(
+                    {'error': 'El pedido ya está marcado como discrepancia.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            if order.status not in ('pending', 'processing', 'ready'):
+                return Response(
+                    {'error': 'Solo se puede marcar discrepancia en pedidos pendientes, en proceso o listos.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            reason = request.data.get('reason')
+            if reason not in ('missing', 'damaged'):
+                return Response(
+                    {'error': 'Razón inválida. Debe ser missing o damaged.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            order.pre_discrepancy_status = order.status
+            order.discrepancy_reason = reason
+            order.status = 'discrepancy'
+            order.save(update_fields=[
+                'pre_discrepancy_status', 'discrepancy_reason',
+                'status', 'updated_at',
+            ])
+        return Response(StaffOrderSerializer(order).data)
+
+    @action(detail=True, methods=['post'], url_path='resolve-discrepancy')
+    def resolve_discrepancy(self, request, pk=None):
+        """Admin-only: return a discrepancy order to its prior status."""
+        if not IsAdmin().has_permission(request, self):
+            return Response(
+                {'error': IsAdmin.message},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        get_object_or_404(Order, pk=pk)
+
+        with transaction.atomic():
+            order = get_object_or_404(Order.objects.select_for_update(), pk=pk)
+            if order.status != 'discrepancy':
+                return Response(
+                    {'error': 'Solo se puede resolver un pedido con discrepancia.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            order.status = order.pre_discrepancy_status or 'pending'
+            order.pre_discrepancy_status = None
+            order.discrepancy_reason = ''
+            order.save(update_fields=[
+                'status', 'pre_discrepancy_status',
+                'discrepancy_reason', 'updated_at',
+            ])
         return Response(StaffOrderSerializer(order).data)
 
     @action(detail=True, methods=['post'])

@@ -81,7 +81,7 @@ class StaffOrderSerializer(OrderSerializer):
     customer = serializers.CharField(source='user.username', read_only=True)
 
     class Meta(OrderSerializer.Meta):
-        fields = OrderSerializer.Meta.fields + ['customer']
+        fields = OrderSerializer.Meta.fields + ['customer', 'discrepancy_reason']
 
 
 class CreateOrderSerializer(serializers.Serializer):
