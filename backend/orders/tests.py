@@ -529,3 +529,224 @@ class AdminCancelTests(StaffOrderTestBase):
         self.assertEqual(self._stock(self.product_b), 10)
         order.refresh_from_db()
         self.assertEqual(order.status, 'processing')
+
+
+class DiscrepancyFlowTests(StaffOrderTestBase):
+    """Discrepancy flag/resolve flow: lateral block, admin-only resolution."""
+
+    def _advance(self, user, order, **data):
+        return self._client(user).post(
+            f'/api/staff/orders/{order.id}/advance/', data, format='json'
+        )
+
+    def _flag(self, user, order, reason='missing'):
+        return self._client(user).post(
+            f'/api/staff/orders/{order.id}/discrepancy/', {'reason': reason},
+            format='json'
+        )
+
+    def _resolve(self, user, order):
+        return self._client(user).post(
+            f'/api/staff/orders/{order.id}/resolve-discrepancy/'
+        )
+
+    def test_bodega_flags_processing_order_as_damaged(self):
+        order = self._order(status='processing')
+
+        response = self._flag(self.bodega, order, reason='damaged')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], 'discrepancy')
+        self.assertEqual(response.data['discrepancy_reason'], 'damaged')
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'discrepancy')
+        self.assertEqual(order.pre_discrepancy_status, 'processing')
+        self.assertEqual(order.discrepancy_reason, 'damaged')
+
+    def test_bodega_flags_pending_order_as_missing(self):
+        order = self._order(status='pending')
+
+        response = self._flag(self.bodega, order, reason='missing')
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'discrepancy')
+        self.assertEqual(order.pre_discrepancy_status, 'pending')
+        self.assertEqual(order.discrepancy_reason, 'missing')
+
+    def test_admin_can_flag_order_as_discrepancy(self):
+        order = self._order(status='ready')
+
+        response = self._flag(self.admin, order, reason='damaged')
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'discrepancy')
+        self.assertEqual(order.pre_discrepancy_status, 'ready')
+
+    def test_despacho_cannot_flag_discrepancy(self):
+        order = self._order(status='ready')
+
+        response = self._flag(self.despacho, order)
+
+        self.assertEqual(response.status_code, 403)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'ready')
+
+    def test_customer_cannot_flag_discrepancy(self):
+        order = self._order(status='pending')
+
+        response = self._flag(self.customer, order)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_flag_rejects_bad_reason(self):
+        order = self._order(status='pending')
+
+        response = self._flag(self.bodega, order, reason='broken')
+
+        self.assertEqual(response.status_code, 400)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'pending')
+
+    def test_flag_rejects_discrepancy_order(self):
+        order = self._order(status='discrepancy')
+
+        response = self._flag(self.bodega, order)
+
+        self.assertEqual(response.status_code, 403)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'discrepancy')
+
+    def test_flag_from_shipped_rejected(self):
+        order = self._order(status='shipped')
+
+        response = self._flag(self.bodega, order)
+
+        self.assertEqual(response.status_code, 403)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'shipped')
+
+    def test_flag_missing_order_returns_404(self):
+        response = self._client(self.bodega).post(
+            '/api/staff/orders/9999/discrepancy/', {'reason': 'missing'},
+            format='json'
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_bodega_cannot_advance_discrepancy_order(self):
+        order = self._order(status='discrepancy')
+
+        response = self._advance(self.bodega, order)
+
+        self.assertEqual(response.status_code, 403)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'discrepancy')
+
+    def test_despacho_cannot_advance_discrepancy_order(self):
+        order = self._order(status='discrepancy')
+
+        response = self._advance(self.despacho, order)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_cannot_advance_discrepancy_order(self):
+        order = self._order(status='discrepancy')
+
+        response = self._advance(self.admin, order)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_full_cycle_pending_flag_block_resolve_resume(self):
+        order = self._order(status='pending')
+
+        flag = self._flag(self.bodega, order, reason='missing')
+        self.assertEqual(flag.status_code, 200)
+
+        blocked = self._advance(self.bodega, order)
+        self.assertEqual(blocked.status_code, 403)
+
+        resolved = self._resolve(self.admin, order)
+        self.assertEqual(resolved.status_code, 200)
+        self.assertEqual(resolved.data['status'], 'pending')
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'pending')
+        self.assertIsNone(order.pre_discrepancy_status)
+        self.assertEqual(order.discrepancy_reason, '')
+
+        resumed = self._advance(self.bodega, order)
+        self.assertEqual(resumed.status_code, 200)
+        self.assertEqual(resumed.data['status'], 'processing')
+
+    def test_full_cycle_processing_flag_block_resolve_resume(self):
+        order = self._order(status='processing')
+
+        flag = self._flag(self.admin, order, reason='damaged')
+        self.assertEqual(flag.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.pre_discrepancy_status, 'processing')
+
+        blocked = self._advance(self.bodega, order)
+        self.assertEqual(blocked.status_code, 403)
+
+        resolved = self._resolve(self.admin, order)
+        self.assertEqual(resolved.status_code, 200)
+        self.assertEqual(resolved.data['status'], 'processing')
+
+        resumed = self._advance(self.bodega, order)
+        self.assertEqual(resumed.status_code, 200)
+        self.assertEqual(resumed.data['status'], 'ready')
+
+    def test_non_admin_cannot_resolve(self):
+        order = self._order(status='discrepancy')
+
+        response = self._resolve(self.bodega, order)
+
+        self.assertEqual(response.status_code, 403)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'discrepancy')
+
+    def test_resolve_on_non_discrepancy_returns_400(self):
+        order = self._order(status='processing')
+
+        response = self._resolve(self.admin, order)
+
+        self.assertEqual(response.status_code, 400)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'processing')
+
+    def test_resolve_missing_order_returns_404(self):
+        response = self._client(self.admin).post(
+            '/api/staff/orders/9999/resolve-discrepancy/'
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_admin_cancels_discrepancy_order_restores_stock(self):
+        order = self._order(status='discrepancy')
+
+        response = self._client(self.admin).post(
+            f'/api/staff/orders/{order.id}/cancel/'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], 'cancelled')
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'cancelled')
+        self.assertEqual(self._stock(self.product_a), 12)
+        self.assertEqual(self._stock(self.product_b), 11)
+
+    def test_admin_list_shows_discrepancy_reason(self):
+        flagged = self._order(status='pending')
+        self._flag(self.bodega, flagged, reason='damaged')
+        normal = self._order(status='ready')
+
+        response = self._client(self.admin).get('/api/staff/orders/')
+
+        self.assertEqual(response.status_code, 200)
+        flagged_data = next(o for o in response.data if o['id'] == flagged.id)
+        normal_data = next(o for o in response.data if o['id'] == normal.id)
+        self.assertEqual(flagged_data['status'], 'discrepancy')
+        self.assertEqual(flagged_data['discrepancy_reason'], 'damaged')
+        self.assertEqual(normal_data['discrepancy_reason'], '')
