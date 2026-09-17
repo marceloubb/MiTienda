@@ -4,6 +4,25 @@ interface FetchOptions extends RequestInit {
   token?: string;
 }
 
+// Error de API con detalle estructurado. `fields` contiene los errores por
+// campo del backend (DRF 400), p. ej. { username: ["Ya existe."] }.
+export class APIError extends Error {
+  status?: number;
+  fields?: Record<string, string[]>;
+
+  constructor(message: string, details?: { status?: number; fields?: Record<string, string[]> }) {
+    super(message);
+    this.name = 'APIError';
+    this.status = details?.status;
+    this.fields = details?.fields;
+  }
+}
+
+function formatFieldMessage(fields: Record<string, string[]>): string {
+  const parts = Object.entries(fields).map(([field, messages]) => `${field}: ${messages.join(', ')}`);
+  return parts.join(' · ') || 'Error en la petición';
+}
+
 async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
   const { token, ...fetchOptions } = options;
 
@@ -19,8 +38,30 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Error desconocido' }));
-    throw new Error(error.detail || error.message || 'Error en la petición');
+    const body = await response.json().catch(() => null);
+
+    if (body && typeof body === 'object') {
+      const detail = (body as { detail?: unknown }).detail;
+      if (typeof detail === 'string') {
+        throw new APIError(detail, { status: response.status });
+      }
+
+      const fields = Object.fromEntries(
+        Object.entries(body).filter(
+          (entry): entry is [string, string[]] =>
+            Array.isArray(entry[1]) && entry[1].every((item) => typeof item === 'string'),
+        ),
+      );
+      if (Object.keys(fields).length > 0) {
+        throw new APIError(formatFieldMessage(fields), { status: response.status, fields });
+      }
+    }
+
+    const message =
+      body && typeof body === 'object' && typeof (body as { message?: unknown }).message === 'string'
+        ? (body as { message: string }).message
+        : 'Error en la petición';
+    throw new APIError(message, { status: response.status });
   }
 
   return response.json();

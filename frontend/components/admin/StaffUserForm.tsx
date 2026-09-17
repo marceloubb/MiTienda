@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Loader2, UserPlus } from "lucide-react";
 import { sileo } from "sileo";
 import { useAuth } from "@/lib/auth-context";
-import { createStaffUser, type UserRole } from "@/lib/api";
+import { createStaffUser, APIError, type UserRole } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -62,9 +62,17 @@ export default function StaffUserForm() {
       setPassword("");
       setRole("bodega");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Error al crear el usuario.";
-      setError(formatFieldError(message));
-      sileo.error({ title: "No se pudo crear el usuario", description: formatFieldError(message) });
+      if (err instanceof APIError && err.fields) {
+        const detail = Object.entries(err.fields)
+          .map(([field, messages]) => `${FIELD_LABELS[field] ?? field}: ${messages.join(", ")}`)
+          .join(" · ");
+        setError(detail);
+        sileo.error({ title: "No se pudo crear el usuario", description: detail });
+      } else {
+        const message = err instanceof Error ? err.message : "Error al crear el usuario.";
+        setError(message);
+        sileo.error({ title: "No se pudo crear el usuario", description: message });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -171,9 +179,9 @@ export default function StaffUserForm() {
   );
 }
 
-// El error de fetchAPI colapsa los errores de campo del backend (400) a un
-// mensaje genérico; se complementa con una pista para que el admin corrija.
-function formatFieldError(message: string): string {
-  if (message !== "Error en la petición") return message;
-  return "Revisa los datos: el usuario o email pueden ya existir y la contraseña debe tener al menos 8 caracteres.";
-}
+const FIELD_LABELS: Record<string, string> = {
+  username: "Usuario",
+  email: "Email",
+  password: "Contraseña",
+  role: "Rol",
+};
