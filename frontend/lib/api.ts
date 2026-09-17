@@ -157,6 +157,58 @@ export async function createOrderFromCart(
   });
 }
 
+// Staff orders (roles: admin, bodega, despacho — enforced server-side via DRF)
+export async function getStaffOrders(token: string) {
+  return fetchAPI<Order[]>('/staff/orders/', { token });
+}
+
+export async function advanceOrder(token: string, id: number, toStatus?: OrderStatus) {
+  return fetchAPI<Order>(`/staff/orders/${id}/advance/`, {
+    method: 'POST',
+    token,
+    ...(toStatus ? { body: JSON.stringify({ to_status: toStatus }) } : {}),
+  });
+}
+
+export async function cancelOrder(token: string, id: number) {
+  return fetchAPI<Order>(`/staff/orders/${id}/cancel/`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export async function flagDiscrepancy(token: string, id: number, reason: DiscrepancyReason) {
+  return fetchAPI<Order>(`/staff/orders/${id}/discrepancy/`, {
+    method: 'POST',
+    token,
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function resolveDiscrepancy(token: string, id: number) {
+  return fetchAPI<Order>(`/staff/orders/${id}/resolve-discrepancy/`, {
+    method: 'POST',
+    token,
+  });
+}
+
+// Staff users (admin only)
+export async function createStaffUser(
+  token: string,
+  data: {
+    username: string;
+    email: string;
+    password: string;
+    role: Exclude<UserRole, 'customer'>;
+  }
+) {
+  return fetchAPI<User>('/staff/users/', {
+    method: 'POST',
+    token,
+    body: JSON.stringify(data),
+  });
+}
+
 // Types
 export interface Product {
   id: number;
@@ -187,12 +239,27 @@ export interface Category {
   updated_at: string;
 }
 
+export type UserRole = 'customer' | 'admin' | 'bodega' | 'despacho';
+
+export type OrderStatus =
+  | 'pending'
+  | 'processing'
+  | 'ready'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled'
+  | 'discrepancy';
+
+export type DiscrepancyReason = 'missing' | 'damaged';
+
 export interface User {
   id: number;
   username: string;
   email: string;
   first_name: string;
   last_name: string;
+  role?: UserRole;
+  is_staff?: boolean;
   profile: UserProfile;
 }
 
@@ -223,8 +290,9 @@ export interface CartItem {
 
 export interface Order {
   id: number;
-  status: string;
+  status: OrderStatus;
   status_display: string;
+  discrepancy_reason?: string;
   total: string;
   shipping_name: string;
   shipping_address: string;
