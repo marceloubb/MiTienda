@@ -51,10 +51,27 @@ class Order(models.Model):
         ('shipped', 'Enviado'),
         ('delivered', 'Entregado'),
         ('cancelled', 'Cancelado'),
+        # Lateral blocked status: entered only via the bodega discrepancy
+        # flag, left only by admin cancel or admin resolve.
+        ('discrepancy', 'Discrepancia'),
+    ]
+
+    DISCREPANCY_REASON_CHOICES = [
+        ('missing', 'Falta'),
+        ('damaged', 'Dañado'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders', verbose_name='Usuario')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Estado')
+    pre_discrepancy_status = models.CharField(
+        max_length=20, null=True, blank=True,
+        verbose_name='Estado previo a discrepancia',
+    )
+    discrepancy_reason = models.CharField(
+        max_length=20, blank=True, default='',
+        choices=DISCREPANCY_REASON_CHOICES,
+        verbose_name='Razón de discrepancia',
+    )
     total = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Total')
     
     # Información de envío
