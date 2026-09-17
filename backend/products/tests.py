@@ -3,6 +3,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from products.models import Category, Product
+from users.models import UserProfile
 
 
 class StaffOrReadOnlyTests(TestCase):
@@ -75,3 +76,39 @@ class StaffOrReadOnlyTests(TestCase):
 
         response = client.post('/api/categories/', {'name': 'New Category'}, format='json')
         self.assertEqual(response.status_code, 201)
+
+
+class RoleLockdownTests(TestCase):
+    """Bodega/despacho are not staff (is_staff=False) and cannot write."""
+
+    def setUp(self):
+        self.category = Category.objects.create(name='Test Category')
+
+    def _role_client(self, role):
+        user = User.objects.create_user(username=f'{role}-user', password='testpass123')
+        UserProfile.objects.create(user=user, role=role)
+        self.assertFalse(user.is_staff)
+        client = APIClient()
+        client.force_authenticate(user=user)
+        return client
+
+    def _product_data(self):
+        return {
+            'name': 'Test Product',
+            'description': 'Description',
+            'price': '10.00',
+            'category': self.category.id,
+            'stock': 5,
+        }
+
+    def test_bodega_product_write_rejected(self):
+        response = self._role_client('bodega').post('/api/products/', self._product_data(), format='json')
+        self.assertEqual(response.status_code, 403)
+
+    def test_despacho_product_write_rejected(self):
+        response = self._role_client('despacho').post('/api/products/', self._product_data(), format='json')
+        self.assertEqual(response.status_code, 403)
+
+    def test_bodega_category_write_rejected(self):
+        response = self._role_client('bodega').post('/api/categories/', {'name': 'New Category'}, format='json')
+        self.assertEqual(response.status_code, 403)

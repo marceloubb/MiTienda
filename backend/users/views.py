@@ -3,10 +3,19 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import authenticate
+from django.shortcuts import get_object_or_404
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
-from .serializers import UserSerializer, RegisterSerializer, UserProfileSerializer, UpdateProfileSerializer
+from .serializers import (
+    UserSerializer,
+    RegisterSerializer,
+    UserProfileSerializer,
+    UpdateProfileSerializer,
+    UserRoleUpdateSerializer,
+    StaffUserSerializer,
+)
 from .models import UserProfile
+from .permissions import IsAdmin
 
 
 class RegisterView(APIView):
@@ -64,3 +73,33 @@ class LogoutView(APIView):
     def post(self, request):
         Token.objects.filter(user=request.user).delete()
         return Response({'message': 'Sesión cerrada'}, status=status.HTTP_200_OK)
+
+
+class UserDetailView(APIView):
+    """Admin-only user detail and role update at /api/users/{id}/."""
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        return Response(UserSerializer(user).data)
+
+    def patch(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        serializer = UserRoleUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(user, serializer.validated_data)
+        user.refresh_from_db()
+        return Response(UserSerializer(user).data)
+
+
+class StaffUserCreateView(APIView):
+    """Admin-only staff-user creation at /api/staff/users/."""
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request):
+        serializer = StaffUserSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
