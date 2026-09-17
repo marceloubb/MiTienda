@@ -1,8 +1,10 @@
 import { ShieldCheck } from "lucide-react";
 import RequireRole from "@/components/RequireRole";
+import StaffUserForm from "@/components/admin/StaffUserForm";
+import OrdersDashboard from "@/components/admin/OrdersDashboard";
 
-// Thin role-gated shell for the admin surface. The dashboard components
-// (orders table, discrepancy panel, staff-user form) land in PR5.
+// Superficie de administración: pedidos y usuarios del staff.
+// El guard es UX-only; la aplicación real de roles vive en las DRF permissions.
 export default function AdminPage() {
   return (
     <RequireRole roles={["admin"]}>
@@ -14,8 +16,17 @@ export default function AdminPage() {
           </h1>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Gestión de pedidos, discrepancias y usuarios del staff.
+          Gestión de pedidos y usuarios del staff.
         </p>
+
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <section aria-label="Pedidos" className="min-w-0 lg:col-span-2">
+            <OrdersDashboard />
+          </section>
+          <aside aria-label="Usuario del staff" className="min-w-0">
+            <StaffUserForm />
+          </aside>
+        </div>
       </div>
     </RequireRole>
   );
