@@ -102,7 +102,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           {product.name}
         </h3>
 
-        <div className="flex items-baseline gap-2">
+        <div className="flex flex-wrap items-baseline gap-2">
           <span className="text-sm font-bold text-primary">{price}</span>
           {originalPrice && (
             <span className="text-[10px] text-muted-foreground line-through">

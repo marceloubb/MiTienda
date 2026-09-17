@@ -125,7 +125,7 @@ function ProfileContent({ user }: { user: UserType }) {
               Datos personales
             </h3>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="first_name" className={labelClass}>
                   Nombre
@@ -222,7 +222,7 @@ function ProfileContent({ user }: { user: UserType }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="city" className={labelClass}>
                   Ciudad

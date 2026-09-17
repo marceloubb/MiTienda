@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
   ClipboardList,
   Hammer,
@@ -23,6 +23,10 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
+  const pathname = usePathname();
+  const headerRef = useRef<HTMLElement>(null);
+  const menuToggleRef = useRef<HTMLButtonElement>(null);
+  const lastPathnameRef = useRef(pathname);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +43,43 @@ export default function Navbar() {
     };
   }, []);
 
+  // Cierra el menú móvil al tocar fuera del header o pulsar Escape.
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        headerRef.current &&
+        event.target instanceof Node &&
+        !headerRef.current.contains(event.target)
+      ) {
+        setMobileMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMobileMenuOpen(false);
+        menuToggleRef.current?.focus();
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileMenuOpen]);
+
+  // Cierra el menú móvil al navegar a otra ruta.
+  useEffect(() => {
+    if (pathname !== lastPathnameRef.current) {
+      lastPathnameRef.current = pathname;
+      setMobileMenuOpen(false);
+    }
+  }, [pathname]);
+
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
     const query = searchQuery.trim();
@@ -49,7 +90,10 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-[#1a1a1a] text-white shadow-lg">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-50 bg-[#1a1a1a] text-white shadow-lg"
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
@@ -104,12 +148,12 @@ export default function Navbar() {
           </nav>
 
           {/* Acciones */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {user ? (
               <>
                 <Link
                   href="/cart"
-                  className="relative flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 transition-colors hover:bg-white/20"
+                  className="relative flex items-center gap-2 rounded-lg bg-white/10 px-2.5 py-2 transition-colors hover:bg-white/20 sm:px-4"
                 >
                   <ShoppingCart className="size-5" />
                   <span className="hidden text-sm sm:inline">Carrito</span>
@@ -122,7 +166,7 @@ export default function Navbar() {
 
                 <Link
                   href="/orders"
-                  className="flex items-center gap-2 transition-colors hover:text-primary"
+                  className="flex items-center gap-2 rounded-lg p-2.5 transition-colors hover:text-primary sm:p-0"
                 >
                   <ClipboardList className="size-5" />
                   <span className="hidden text-sm sm:inline">Mis pedidos</span>
@@ -130,7 +174,7 @@ export default function Navbar() {
 
                 <Link
                   href="/profile"
-                  className="flex items-center gap-2 transition-colors hover:text-primary"
+                  className="flex items-center gap-2 rounded-lg p-2.5 transition-colors hover:text-primary sm:p-0"
                 >
                   <User className="size-5" />
                   <span className="hidden text-sm sm:inline">
@@ -143,7 +187,7 @@ export default function Navbar() {
                   onClick={logout}
                   title="Cerrar sesión"
                   aria-label="Cerrar sesión"
-                  className="transition-colors outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-white/50"
+                  className="flex size-10 items-center justify-center rounded-lg transition-colors outline-none hover:bg-white/10 hover:text-primary focus-visible:ring-3 focus-visible:ring-white/50"
                 >
                   <LogOut className="size-5" />
                 </button>
@@ -159,9 +203,10 @@ export default function Navbar() {
 
             <button
               type="button"
+              ref={menuToggleRef}
               aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
               aria-expanded={mobileMenuOpen}
-              className="outline-none focus-visible:ring-3 focus-visible:ring-white/50 lg:hidden"
+              className="flex size-10 items-center justify-center rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-white/50 lg:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? (
@@ -222,7 +267,7 @@ export default function Navbar() {
       {categories.length > 0 && (
         <div className="border-t border-white/10 bg-white/5">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-6 overflow-x-auto py-2 text-sm">
+            <div className="scrollbar-none flex items-center gap-6 overflow-x-auto py-2 text-sm">
               {categories.map((category) => (
                 <Link
                   key={category.id}

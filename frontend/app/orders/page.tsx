@@ -197,7 +197,7 @@ function OrdersContent({ token }: { token: string }) {
       </div>
 
       {orders.length === 0 ? (
-        <Card className="mt-8 w-full p-12 text-center">
+        <Card className="mt-8 w-full p-8 text-center sm:p-12">
           <PackageOpen className="mx-auto size-10 text-muted-foreground/60" />
           <h2 className="mt-4 text-lg font-semibold text-foreground">
             Todavía no tenés pedidos

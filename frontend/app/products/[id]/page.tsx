@@ -279,6 +279,7 @@ export default function ProductDetailPage() {
               <Button
                 variant="outline"
                 size="icon-sm"
+                className="size-9 sm:size-7"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
                 disabled={quantity <= 1}
                 aria-label="Restar una unidad"
@@ -291,6 +292,7 @@ export default function ProductDetailPage() {
               <Button
                 variant="outline"
                 size="icon-sm"
+                className="size-9 sm:size-7"
                 onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
                 disabled={quantity >= product.stock}
                 aria-label="Sumar una unidad"

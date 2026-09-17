@@ -87,7 +87,7 @@ export default function CheckoutPage() {
   if (cart.items.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
-        <Card className="w-full p-12 text-center">
+        <Card className="w-full p-8 text-center sm:p-12">
           <Package className="mx-auto size-12 text-muted-foreground/50" />
           <h1 className="mt-4 text-xl font-bold text-foreground">
             Tu carrito está vacío
@@ -204,7 +204,7 @@ function CheckoutForm({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label htmlFor="shipping_city" className={labelClass}>
                       Ciudad
@@ -427,7 +427,7 @@ function CheckoutForm({
 function OrderConfirmation({ orderId }: { orderId: number }) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
-      <Card className="w-full p-12 text-center">
+      <Card className="w-full p-6 text-center sm:p-12">
         <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-stock">
           <CheckCircle className="size-10 text-white" />
         </div>

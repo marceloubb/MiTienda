@@ -112,7 +112,7 @@ export default function CartPage() {
   if (!cart || cart.items.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
-        <Card className="w-full p-12 text-center">
+        <Card className="w-full p-8 text-center sm:p-12">
           <ShoppingBag className="mx-auto size-12 text-muted-foreground/50" />
           <h1 className="mt-4 text-xl font-bold text-foreground">
             Tu carrito está vacío
@@ -150,11 +150,11 @@ export default function CartPage() {
               return (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-4 p-4 ${
+                  className={`flex flex-wrap items-center gap-4 p-4 ${
                     index !== cart.items.length - 1 ? "border-b border-border" : ""
                   }`}
                 >
-                  <div className="size-20 shrink-0 overflow-hidden rounded-lg bg-surface-1">
+                  <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-surface-1 sm:size-20">
                     {item.product.image ? (
                       <img
                         src={item.product.image}
@@ -184,10 +184,11 @@ export default function CartPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     <Button
                       variant="outline"
                       size="icon-sm"
+                      className="size-9 sm:size-7"
                       onClick={() =>
                         handleUpdateQuantity(item.product.id, item.quantity - 1)
                       }
@@ -202,6 +203,7 @@ export default function CartPage() {
                     <Button
                       variant="outline"
                       size="icon-sm"
+                      className="size-9 sm:size-7"
                       onClick={() =>
                         handleUpdateQuantity(item.product.id, item.quantity + 1)
                       }
@@ -212,7 +214,7 @@ export default function CartPage() {
                     </Button>
                   </div>
 
-                  <div className="w-24 text-right">
+                  <div className="w-full text-right sm:w-24">
                     <p className="text-sm font-bold text-foreground">
                       ${parseFloat(item.subtotal).toFixed(2)}
                     </p>
@@ -223,7 +225,7 @@ export default function CartPage() {
                         handleRemoveItem(item.product.id, item.product.name)
                       }
                       disabled={isPending}
-                      className="mt-1 text-offer hover:bg-offer/10 hover:text-offer"
+                      className="mt-1 h-10 text-offer hover:bg-offer/10 hover:text-offer sm:h-6"
                     >
                       <Trash2 />
                       Eliminar
