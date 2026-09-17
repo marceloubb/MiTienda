@@ -23,6 +23,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 
+def _env_bool(name, default='False'):
+    """Parse a boolean environment variable ('true', '1', 'yes' are truthy)."""
+    return os.environ.get(name, default).lower() in ('true', '1', 'yes')
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
@@ -33,7 +38,7 @@ SECRET_KEY = os.environ.get(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
+DEBUG = _env_bool('DJANGO_DEBUG', 'False')
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
@@ -167,7 +172,16 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
 ]
 
-CORS_ALLOW_CREDENTIALS = True
+# Reject cross-origin credentialed requests (H9); token-header requests stay functional.
+CORS_ALLOW_CREDENTIALS = False
+
+# Env-gated secure settings block (H9): off by default for development.
+if _env_bool('DJANGO_SECURE_MODE'):
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '31536000'))
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Fail early in production with the development placeholder SECRET_KEY
 if not DEBUG and SECRET_KEY == 'django-insecure-ls#+os#hiq*hqg6a9c*yzapi452p*_o$q3k6@%oady%0yxcmxz':
