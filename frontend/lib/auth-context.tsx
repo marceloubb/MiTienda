@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { User, Cart } from '@/lib/api';
+import { User, Cart, UserRole } from '@/lib/api';
 import { getProfile, getCart } from '@/lib/api';
 
 interface AuthContextType {
@@ -105,4 +105,10 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+}
+
+// Session user role (null while loading or when the user is not authenticated).
+export function useRole(): UserRole | null {
+  const { user } = useAuth();
+  return user?.role ?? null;
 }
