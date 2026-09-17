@@ -15,7 +15,25 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { getCategories, Category } from "@/lib/api";
+import type { UserRole } from "@/lib/api";
 import { getCategoryIconElement } from "@/lib/category-icons";
+
+// Role → staff navigation links (design Navbar role map): admin sees all
+// three; bodega/despacho only their own surface; customer none.
+const STAFF_LINKS: Record<UserRole, { href: string; label: string }[]> = {
+  admin: [
+    { href: "/admin", label: "Administración" },
+    { href: "/bodega", label: "Bodega" },
+    { href: "/despacho", label: "Despacho" },
+  ],
+  bodega: [{ href: "/bodega", label: "Bodega" }],
+  despacho: [{ href: "/despacho", label: "Despacho" }],
+  customer: [],
+};
+
+function staffLinksFor(role: UserRole | undefined): { href: string; label: string }[] {
+  return role ? (STAFF_LINKS[role] ?? []) : [];
+}
 
 export default function Navbar() {
   const { user, cart, logout } = useAuth();
@@ -27,6 +45,7 @@ export default function Navbar() {
   const headerRef = useRef<HTMLElement>(null);
   const menuToggleRef = useRef<HTMLButtonElement>(null);
   const lastPathnameRef = useRef(pathname);
+  const staffLinks = staffLinksFor(user?.role);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,6 +164,15 @@ export default function Navbar() {
             >
               Catálogo
             </Link>
+            {staffLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="transition-colors hover:text-primary"
+              >
+                {link.label}
+              </Link>
+            ))}
           </nav>
 
           {/* Acciones */}
@@ -258,6 +286,16 @@ export default function Navbar() {
                   Mis pedidos
                 </Link>
               )}
+              {staffLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="transition-colors hover:text-primary"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
             </nav>
           </div>
         )}
