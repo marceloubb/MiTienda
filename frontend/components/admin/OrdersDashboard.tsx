@@ -192,7 +192,7 @@ export default function OrdersDashboard() {
                   <tr key={order.id}>
                     <td className="py-2.5 pr-3 font-medium text-foreground">#{order.id}</td>
                     <td className="py-2.5 pr-3 text-foreground">
-                      {order.shipping_name || "—"}
+                      {order.customer || order.shipping_name || "—"}
                     </td>
                     <td className="py-2.5 pr-3 text-muted-foreground">
                       {formatDate(order.created_at)}

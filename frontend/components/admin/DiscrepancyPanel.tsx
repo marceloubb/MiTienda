@@ -144,7 +144,7 @@ export default function DiscrepancyPanel() {
                     <OrderStatusBadge status={order.status} display={order.status_display} />
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {order.shipping_name || "—"} · Total $
+                    {order.customer || order.shipping_name || "—"} · Total $
                     {parseFloat(order.total).toFixed(2)}
                   </p>
                   <p className="mt-1 inline-block rounded-md bg-destructive/10 px-2 py-0.5 text-xs text-destructive">

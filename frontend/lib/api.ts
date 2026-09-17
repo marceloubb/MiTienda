@@ -293,6 +293,7 @@ export interface Order {
   status: OrderStatus;
   status_display: string;
   discrepancy_reason?: string;
+  customer?: string;
   total: string;
   shipping_name: string;
   shipping_address: string;
