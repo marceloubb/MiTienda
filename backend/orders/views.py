@@ -10,8 +10,36 @@ from products.models import Product
 from .serializers import (
     CartSerializer, CartItemSerializer, AddToCartSerializer,
     OrderSerializer, CreateOrderSerializer, OrderItemSerializer,
-    UpdateCartItemSerializer,
+    StaffOrderSerializer, UpdateCartItemSerializer,
 )
+from users.permissions import IsAdmin, IsStaffRole, get_user_role
+
+
+# Transition matrix per role: the single next status for each from-status.
+ADVANCE_MATRIX = {
+    'bodega': {
+        'pending': 'processing',
+        'processing': 'ready',
+    },
+    'despacho': {
+        'ready': 'shipped',
+        'shipped': 'delivered',
+    },
+    'admin': {
+        'pending': 'processing',
+        'processing': 'ready',
+        'ready': 'shipped',
+        'shipped': 'delivered',
+    },
+}
+
+
+def _restore_order_stock(order):
+    """Restore product stock for every order item using F() expressions."""
+    for item in order.items.select_for_update():
+        Product.objects.filter(pk=item.product_id).update(
+            stock=F('stock') + item.quantity
+        )
 
 
 class CartViewSet(viewsets.ReadOnlyModelViewSet):
@@ -167,3 +195,58 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'El carrito está vacío'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+class StaffOrderViewSet(viewsets.ReadOnlyModelViewSet):
+    """Staff view of all orders with role-scoped advance and admin cancel."""
+
+    serializer_class = StaffOrderSerializer
+    permission_classes = [IsAuthenticated, IsStaffRole]
+
+    def get_queryset(self):
+        return Order.objects.all()
+
+    @action(detail=True, methods=['post'])
+    def advance(self, request, pk=None):
+        """Advance an order one step along the role's transition matrix.
+
+        Accepts an optional `to_status` target: when provided it must be the
+        next reachable state for the role, otherwise 403 (skip/overreach).
+        """
+        get_object_or_404(Order, pk=pk)
+        transitions = ADVANCE_MATRIX.get(get_user_role(request.user), {})
+        requested = request.data.get('to_status')
+
+        with transaction.atomic():
+            order = get_object_or_404(Order.objects.select_for_update(), pk=pk)
+            target = transitions.get(order.status)
+            if target is None or (requested is not None and requested != target):
+                return Response(
+                    {'error': 'Transición no permitida para este rol y estado.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            order.status = target
+            order.save(update_fields=['status', 'updated_at'])
+        return Response(StaffOrderSerializer(order).data)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Admin-only cancel: atomically restore stock and mark cancelled."""
+        if not IsAdmin().has_permission(request, self):
+            return Response(
+                {'error': IsAdmin.message},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        get_object_or_404(Order, pk=pk)
+
+        with transaction.atomic():
+            order = get_object_or_404(Order.objects.select_for_update(), pk=pk)
+            if order.status in ('delivered', 'cancelled'):
+                return Response(
+                    {'error': 'No se puede cancelar un pedido entregado o ya cancelado.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            _restore_order_stock(order)
+            order.status = 'cancelled'
+            order.save(update_fields=['status', 'updated_at'])
+        return Response(StaffOrderSerializer(order).data)

@@ -75,6 +75,15 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
 
 
+class StaffOrderSerializer(OrderSerializer):
+    """Staff view of an order: customer username plus all status values."""
+
+    customer = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta(OrderSerializer.Meta):
+        fields = OrderSerializer.Meta.fields + ['customer']
+
+
 class CreateOrderSerializer(serializers.Serializer):
     shipping_name = serializers.CharField(max_length=200)
     shipping_address = serializers.CharField()
