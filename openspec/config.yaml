@@ -2,4 +2,27 @@ schema: spec-driven
 
 # Artifact store declaration
 # Values: openspec | engram | hybrid | none
-artifact_store: engram
+artifact_store: hybrid
+
+# Testing capabilities
+strict_tdd: false
+
+projects:
+  - path: backend/
+    stack: Python 3.12 / Django 6.1.1 / DRF / SQLite
+    test_command: ".venv\\Scripts\\python.exe manage.py test"
+    framework: Django TestCase
+  - path: frontend/
+    stack: Next.js 16.3.5 / React 19.2.8 / TypeScript 5 / Tailwind 4 / ESLint 9
+    test_command: "—"
+    framework: "—"
+
+# Phase rules (defaults)
+phases:
+  proposal: true
+  spec: true
+  design: true
+  tasks: true
+  apply: true
+  verify: true
+  archive: true

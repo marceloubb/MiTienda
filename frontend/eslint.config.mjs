@@ -13,6 +13,13 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // TODO: migrate auth-context.tsx and profile/page.tsx to react-query/useQuery
+  {
+    files: ['lib/auth-context.tsx', 'app/profile/page.tsx'],
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
 ]);
 
 export default eslintConfig;

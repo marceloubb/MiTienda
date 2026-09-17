@@ -1,10 +1,24 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { getProducts, getCategories, Product, Category } from '@/lib/api';
-import ProductCard from '@/components/ProductCard';
-import { Loader2, ChevronRight } from 'lucide-react';
-import Link from 'next/link';
+import { useEffect, useState } from "react";
+import {
+  AlertTriangle,
+  ChevronRight,
+  Hammer,
+  PackageOpen,
+  RotateCcw,
+  Sparkles,
+} from "lucide-react";
+import Link from "next/link";
+import { getProducts, getCategories, Product, Category } from "@/lib/api";
+import ProductCard from "@/components/ProductCard";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getCategoryIconElement } from "@/lib/category-icons";
+import { sileo } from "sileo";
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -23,7 +37,13 @@ export default function Home() {
         setProducts(productsData);
         setCategories(categoriesData);
       } catch (err) {
-        setError('Error al cargar los productos. Asegúrate de que el backend esté ejecutándose.');
+        setError(
+          "Error al cargar los productos. Asegúrate de que el backend esté ejecutándose."
+        );
+        sileo.error({
+          title: "Error al cargar los productos",
+          description: "Asegúrate de que el backend esté ejecutándose.",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -41,95 +61,135 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="animate-spin text-[#e65c00]" size={48} />
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <Skeleton className="h-56 w-full rounded-2xl md:h-64" aria-hidden="true" />
+        <Skeleton className="mt-8 h-6 w-40" aria-hidden="true" />
+        <div className="mt-4 grid grid-cols-3 gap-3 md:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" aria-hidden="true" />
+          ))}
+        </div>
+        <Skeleton className="mt-10 h-6 w-32" aria-hidden="true" />
+        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
-        <div className="text-6xl">⚠️</div>
-        <p className="text-[#c0392b] text-lg text-center">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="bg-[#e65c00] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#cc5200] transition-colors"
-        >
-          Reintentar
-        </button>
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <Card className="w-full max-w-md p-8 text-center">
+          <AlertTriangle className="mx-auto size-10 text-destructive" />
+          <h2 className="mt-4 text-lg font-semibold text-foreground">
+            No pudimos cargar los productos
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+          <Button
+            onClick={() => window.location.reload()}
+            className="mx-auto mt-6"
+          >
+            <RotateCcw />
+            Reintentar
+          </Button>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#1a1a1a] to-[#2a2a2a] rounded-2xl p-8 md:p-12 mb-8 text-white relative overflow-hidden">
-        <div className="absolute top-4 right-4 bg-[#ffd600] text-[#1a1a1a] text-xs font-bold px-3 py-1 rounded">
-          Oferta de la semana
-        </div>
-        <div className="relative z-10 max-w-xl">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">
-            Todo para tu proyecto, en un{' '}
-            <span className="text-[#e65c00]">solo lugar</span>
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      {/* Hero */}
+      <section className="relative overflow-hidden rounded-2xl bg-[#1a1a1a] px-6 py-10 text-white md:px-12 md:py-14">
+        <div
+          className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-primary/25 blur-3xl"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -bottom-32 -left-16 size-80 rounded-full bg-accent/15 blur-3xl"
+          aria-hidden="true"
+        />
+        <Hammer
+          className="pointer-events-none absolute -right-6 bottom-0 hidden size-48 text-white/5 md:block"
+          aria-hidden="true"
+        />
+        <div className="relative z-10 max-w-2xl">
+          <Badge className="mb-4 gap-1.5 bg-[#ffd600] text-[#1a1a1a]">
+            <Sparkles className="size-3.5" />
+            Oferta de la semana
+          </Badge>
+          <h1 className="text-3xl leading-tight font-bold md:text-4xl">
+            Todo para tu proyecto, en un{" "}
+            <span className="text-primary">solo lugar</span>
           </h1>
-          <p className="text-gray-300 mb-6">
-            Herramientas profesionales y materiales de primera calidad. Envío rápido a todo el país.
+          <p className="mt-3 text-gray-300">
+            Herramientas profesionales y materiales de primera calidad. Envío
+            rápido a todo el país.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <a
-              href="#products"
-              className="bg-[#e65c00] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#cc5200] transition-colors"
-            >
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a href="#products" className={buttonVariants({ size: "lg" })}>
               Ver ofertas
             </a>
             <Link
               href="/products"
-              className="bg-white/10 text-white px-6 py-3 rounded-lg font-medium hover:bg-white/20 transition-colors border border-white/20"
+              className={buttonVariants({
+                variant: "outline",
+                size: "lg",
+                className:
+                  "border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white",
+              })}
             >
-              Catálogo completo
+              Catálogo completo <ChevronRight />
             </Link>
           </div>
         </div>
-        <div className="hidden md:flex absolute right-12 top-1/2 -translate-y-1/2 text-8xl opacity-20">
-          🔧
-        </div>
-      </div>
+      </section>
 
       {/* Categorías */}
-      <section className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-[#1a1a1a]">Categorías</h2>
-          <Link href="/products" className="text-sm text-[#e65c00] flex items-center gap-1 hover:underline">
-            Ver todas <ChevronRight size={16} />
+      <section className="mt-8">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-foreground">Categorías</h2>
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+          >
+            Ver todas <ChevronRight className="size-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`flex flex-col items-center p-4 rounded-xl border transition-all ${
-                selectedCategory === category.id
-                  ? 'bg-[#e65c00] text-white border-[#e65c00]'
-                  : 'bg-white text-[#1a1a1a] border-[#e0e0e0] hover:border-[#e65c00]'
-              }`}
-            >
-              <span className="text-2xl mb-2">{getCategoryEmoji(category.name)}</span>
-              <span className="text-xs font-medium text-center">{category.name}</span>
-            </button>
-          ))}
+        <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
+          {categories.map((category) => {
+            const isSelected = selectedCategory === category.id;
+            return (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                aria-pressed={isSelected}
+                className={`flex flex-col items-center gap-2 rounded-xl border px-2 py-4 transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none ${
+                  isSelected
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-card text-card-foreground hover:border-primary/50 hover:shadow-sm"
+                }`}
+              >
+                {getCategoryIconElement(category.name, "size-6")}
+                <span className="text-xs font-medium text-center leading-tight">
+                  {category.name}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </section>
 
       {/* Productos destacados */}
       {featuredProducts.length > 0 && (
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-[#1a1a1a]">Destacados</h2>
+        <section className="mt-10">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-foreground">Destacados</h2>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             {featuredProducts.slice(0, 4).map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -139,14 +199,16 @@ export default function Home() {
 
       {/* Ofertas */}
       {saleProducts.length > 0 && (
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-[#1a1a1a]">🔥 Ofertas Especiales</h2>
-            <span className="bg-[#c0392b] text-white text-xs font-bold px-3 py-1 rounded">
+        <section className="mt-10">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-foreground">
+              Ofertas Especiales
+            </h2>
+            <Badge variant="destructive">
               Hasta -{Math.max(...saleProducts.map((p) => p.discount_percentage))}% OFF
-            </span>
+            </Badge>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             {saleProducts.slice(0, 4).map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -155,29 +217,44 @@ export default function Home() {
       )}
 
       {/* Todos los productos */}
-      <section id="products">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-[#1a1a1a]">
+      <section id="products" className="mt-12 scroll-mt-28">
+        <Separator className="mb-8" />
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-foreground">
             {selectedCategory
               ? categories.find((c) => c.id === selectedCategory)?.name
-              : 'Todos los productos'}
+              : "Todos los productos"}
           </h2>
           {selectedCategory && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setSelectedCategory(null)}
-              className="text-sm text-[#e65c00] hover:underline"
+              className="text-primary hover:bg-primary/10 hover:text-primary"
             >
               Ver todos
-            </button>
+            </Button>
           )}
         </div>
         {filteredProducts.length === 0 ? (
-          <div className="bg-white rounded-xl p-8 text-center border border-[#e0e0e0]">
-            <div className="text-4xl mb-4">📦</div>
-            <p className="text-[#666666]">No hay productos disponibles en esta categoría.</p>
-          </div>
+          <Card className="w-full p-10 text-center">
+            <PackageOpen className="mx-auto size-10 text-muted-foreground/60" />
+            <p className="mt-4 text-sm text-muted-foreground">
+              No hay productos disponibles en esta categoría.
+            </p>
+            {selectedCategory && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedCategory(null)}
+                className="mx-auto mt-4"
+              >
+                Ver todos
+              </Button>
+            )}
+          </Card>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             {filteredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -188,20 +265,16 @@ export default function Home() {
   );
 }
 
-function getCategoryEmoji(category: string): string {
-  const emojis: Record<string, string> = {
-    Electrónica: '⚡',
-    Ropa: '👕',
-    Hogar: '🏠',
-    Deportes: '⚽',
-    Libros: '📚',
-    Juguetes: '🧸',
-    Herramientas: '🔨',
-    Electricidad: '⚡',
-    Fijaciones: '🪛',
-    Plomería: '🚿',
-    Pinturas: '🎨',
-    Construcción: '🏗️',
-  };
-  return emojis[category] || '📦';
+function ProductCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-xl bg-card ring-1 ring-border">
+      <Skeleton className="aspect-[4/3] w-full rounded-none" aria-hidden="true" />
+      <div className="space-y-2 p-4">
+        <Skeleton className="h-3 w-1/3" aria-hidden="true" />
+        <Skeleton className="h-3 w-4/5" aria-hidden="true" />
+        <Skeleton className="h-4 w-1/2" aria-hidden="true" />
+        <Skeleton className="h-8 w-full" aria-hidden="true" />
+      </div>
+    </div>
+  );
 }

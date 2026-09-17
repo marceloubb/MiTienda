@@ -1,10 +1,15 @@
-'use client';
+"use client";
 
-import { Product } from '@/lib/api';
-import { useAuth } from '@/lib/auth-context';
-import { addToCart } from '@/lib/api';
-import { ShoppingCart, Tag } from 'lucide-react';
-import Link from 'next/link';
+import { Product } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { addToCart } from "@/lib/api";
+import { ShoppingCart, Tag } from "lucide-react";
+import { sileo } from "sileo";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { getCategoryIconElement } from "@/lib/category-icons";
 
 interface ProductCardProps {
   product: Product;
@@ -12,115 +17,116 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { token, updateCart } = useAuth();
+  const router = useRouter();
 
-  async function handleAddToCart(e: React.MouseEvent) {
-    e.preventDefault();
+  async function handleAddToCart() {
     if (!token) {
-      window.location.href = '/login';
+      router.push("/login");
       return;
     }
 
     try {
       const cart = await addToCart(token, product.id);
       updateCart(cart);
-      alert('✓ Producto agregado al carrito');
-    } catch (error) {
-      alert('Error al agregar al carrito');
+      sileo.success({
+        title: "Agregado al carrito",
+        description: product.name,
+      });
+    } catch {
+      sileo.error({
+        title: "Error al agregar al carrito",
+        description: "Inténtalo de nuevo en unos segundos.",
+      });
     }
   }
 
+  const price = `$${parseFloat(product.price).toFixed(2)}`;
+  const originalPrice = product.original_price
+    ? `$${parseFloat(product.original_price).toFixed(2)}`
+    : null;
+
+  const stockStyles = {
+    color:
+      product.stock > 10
+        ? "text-stock"
+        : product.stock > 0
+          ? "text-stock-low"
+          : "text-offer",
+    dot:
+      product.stock > 10
+        ? "bg-stock"
+        : product.stock > 0
+          ? "bg-stock-low"
+          : "bg-offer",
+    label:
+      product.stock > 10
+        ? "En stock"
+        : product.stock > 0
+          ? `Últimas ${product.stock} unidades`
+          : "Sin stock",
+  };
+
   return (
-    <Link href={`/products/${product.id}`}>
-      <div className="bg-white rounded-xl overflow-hidden border border-[#e0e0e0] hover:border-[#e65c00] hover:shadow-lg transition-all duration-200 group">
-        {/* Imagen */}
-        <div className="relative h-40 bg-[#f5f5f5] overflow-hidden">
-          {product.is_on_sale && product.discount_percentage > 0 && (
-            <div className="absolute top-2 left-2 z-10 bg-[#c0392b] text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
-              <Tag size={10} />
-              -{product.discount_percentage}%
-            </div>
-          )}
-          {product.image ? (
-            <img
-              src={product.image}
-              alt={product.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-5xl">
-              {getCategoryEmoji(product.category_name)}
-            </div>
-          )}
-        </div>
-
-        {/* Contenido */}
-        <div className="p-3">
-          <p className="text-[10px] text-[#999999] uppercase tracking-wide mb-1">
-            {product.category_name}
-          </p>
-          <h3 className="text-xs font-medium text-[#1a1a1a] mb-2 line-clamp-2 min-h-[32px]">
-            {product.name}
-          </h3>
-
-          {/* Precios */}
-          <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-sm font-bold text-[#e65c00]">
-              ${parseFloat(product.price).toFixed(2)}
-            </span>
-            {product.original_price && (
-              <span className="text-[10px] text-[#999999] line-through">
-                ${parseFloat(product.original_price).toFixed(2)}
-              </span>
+    <div className="group flex h-full flex-col overflow-hidden rounded-xl bg-card text-sm text-card-foreground transition-all duration-200 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/30">
+      <Link
+        href={`/products/${product.id}`}
+        className="relative block aspect-[4/3] overflow-hidden bg-surface-1"
+      >
+        {product.is_on_sale && product.discount_percentage > 0 && (
+          <Badge className="absolute top-2 left-2 z-10 gap-1 bg-offer text-white">
+            <Tag className="size-3" />
+            -{product.discount_percentage}%
+          </Badge>
+        )}
+        {product.image ? (
+          <img
+            src={product.image}
+            alt={product.name}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            {getCategoryIconElement(
+              product.category_name,
+              "size-12 text-muted-foreground/40"
             )}
           </div>
+        )}
+      </Link>
 
-          {/* Stock indicator */}
-          <div className="flex items-center gap-1 mb-2">
-            <div className={`w-2 h-2 rounded-full ${
-              product.stock > 10 ? 'bg-[#2e7d32]' :
-              product.stock > 0 ? 'bg-[#f39c12]' :
-              'bg-[#c0392b]'
-            }`}></div>
-            <span className={`text-[10px] ${
-              product.stock > 10 ? 'text-[#2e7d32]' :
-              product.stock > 0 ? 'text-[#f39c12]' :
-              'text-[#c0392b]'
-            }`}>
-              {product.stock > 10 ? 'En stock' :
-               product.stock > 0 ? `Últimas ${product.stock} unidades` :
-               'Sin stock'}
+      <div className="flex flex-1 flex-col gap-1.5 p-4">
+        <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
+          {product.category_name}
+        </p>
+        <h3 className="line-clamp-2 min-h-[32px] text-xs leading-snug font-medium text-foreground">
+          {product.name}
+        </h3>
+
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-bold text-primary">{price}</span>
+          {originalPrice && (
+            <span className="text-[10px] text-muted-foreground line-through">
+              {originalPrice}
             </span>
-          </div>
-
-          {/* Botón agregar */}
-          <button
-            onClick={handleAddToCart}
-            disabled={product.stock === 0}
-            className="w-full bg-[#e65c00] text-white py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1 hover:bg-[#cc5200] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ShoppingCart size={12} />
-            {product.stock === 0 ? 'Sin stock' : '+ Agregar'}
-          </button>
+          )}
         </div>
-      </div>
-    </Link>
-  );
-}
 
-function getCategoryEmoji(category: string): string {
-  const emojis: Record<string, string> = {
-    Electrónica: '⚡',
-    Ropa: '👕',
-    Hogar: '🏠',
-    Deportes: '⚽',
-    Libros: '📚',
-    Juguetes: '🧸',
-    Herramientas: '🔨',
-    Electricidad: '⚡',
-    Fijaciones: '🪛',
-    Plomería: '🚿',
-    Pinturas: '🎨',
-    Construcción: '🏗️',
-  };
-  return emojis[category] || '📦';
+        <div className="flex items-center gap-1.5">
+          <span className={`size-2 rounded-full ${stockStyles.dot}`} />
+          <span className={`text-[10px] ${stockStyles.color}`}>
+            {stockStyles.label}
+          </span>
+        </div>
+
+        <Button
+          onClick={handleAddToCart}
+          disabled={product.stock === 0}
+          className="mt-auto w-full"
+        >
+          <ShoppingCart />
+          {product.stock === 0 ? "Sin stock" : "Agregar"}
+        </Button>
+      </div>
+    </div>
+  );
 }

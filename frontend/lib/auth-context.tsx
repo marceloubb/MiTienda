@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Cart } from '@/lib/api';
 import { getProfile, getCart } from '@/lib/api';
 
@@ -17,23 +17,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function getInitialToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(getInitialToken);
   const [cart, setCart] = useState<Cart | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => getInitialToken() !== null);
 
-  useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    if (savedToken) {
-      setToken(savedToken);
-      loadProfile(savedToken);
-    } else {
-      setIsLoading(false);
-    }
-  }, []);
-
-  async function loadProfile(authToken: string) {
+  const loadProfile = useCallback(async (authToken: string) => {
     try {
       const userData = await getProfile(authToken);
       setUser(userData);
@@ -50,7 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      void loadProfile(token);
+    }
+  }, [token, loadProfile]);
 
   function login(newToken: string, userData: User) {
     localStorage.setItem('token', newToken);

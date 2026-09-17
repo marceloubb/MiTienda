@@ -1,48 +1,71 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import { updateProfile } from '@/lib/api';
-import { Loader2, User, Mail, Phone, MapPin } from 'lucide-react';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  Receipt,
+  Save,
+  User,
+  UserRound,
+} from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { updateProfile, User as UserType } from "@/lib/api";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { sileo } from "sileo";
+
+const inputClass =
+  "w-full rounded-lg border border-border bg-background py-2.5 pr-4 pl-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
+
+const iconClass =
+  "pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground";
 
 export default function ProfilePage() {
-  const { user, token, isLoading, refreshProfile } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
-  const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    postal_code: '',
-  });
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push('/login');
+      router.push("/login");
     }
   }, [user, isLoading, router]);
 
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        first_name: user.first_name || '',
-        last_name: user.last_name || '',
-        email: user.email || '',
-        phone: user.profile?.phone || '',
-        address: user.profile?.address || '',
-        city: user.profile?.city || '',
-        postal_code: user.profile?.postal_code || '',
-      });
-    }
-  }, [user]);
+  if (isLoading || !user) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
+        <Skeleton className="h-7 w-40" aria-hidden="true" />
+        <Skeleton className="mt-6 h-32 w-full rounded-2xl" aria-hidden="true" />
+        <Skeleton className="mt-6 h-96 w-full rounded-2xl" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  return <ProfileContent user={user} />;
+}
+
+function ProfileContent({ user }: { user: UserType }) {
+  const { token, refreshProfile } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState(() => ({
+    first_name: user.first_name || "",
+    last_name: user.last_name || "",
+    email: user.email || "",
+    phone: user.profile?.phone || "",
+    address: user.profile?.address || "",
+    city: user.profile?.city || "",
+    postal_code: user.profile?.postal_code || "",
+  }));
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -50,179 +73,207 @@ export default function ProfilePage() {
     if (!token) return;
 
     setIsSaving(true);
-    setMessage('');
-
     try {
       await updateProfile(token, formData);
       await refreshProfile();
-      setMessage('Perfil actualizado correctamente');
-    } catch (err) {
-      setMessage('Error al actualizar el perfil');
+      sileo.success({
+        title: "Perfil actualizado",
+        description: "Tus datos se guardaron correctamente.",
+      });
+    } catch {
+      sileo.error({
+        title: "Error al actualizar el perfil",
+        description: "Revisa los datos e inténtalo de nuevo.",
+      });
     } finally {
       setIsSaving(false);
     }
   }
 
-  if (isLoading || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="animate-spin text-violet-600" size={48} />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Mi Perfil</h1>
+    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
+      <h1 className="text-2xl font-bold text-foreground">Mi perfil</h1>
 
-      <div className="bg-white rounded-2xl shadow-lg p-6">
-        <div className="flex items-center gap-4 mb-6 pb-6 border-b">
-          <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-            {user.username.charAt(0).toUpperCase()}
+      {/* Encabezado */}
+      <Card className="mt-6 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold text-primary">
+              {user.username.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate text-xl font-semibold text-foreground">
+                {user.username}
+              </h2>
+              <p className="truncate text-sm text-muted-foreground">
+                {user.email}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800">{user.username}</h2>
-            <p className="text-gray-500">{user.email}</p>
-          </div>
+          <Link href="/orders" className={buttonVariants({ variant: "outline" })}>
+            <Receipt />
+            Ver mis pedidos
+          </Link>
         </div>
+      </Card>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {message && (
-            <div
-              className={`p-3 rounded-lg text-sm ${
-                message.includes('Error')
-                  ? 'bg-red-50 text-red-600'
-                  : 'bg-green-50 text-green-600'
-              }`}
-            >
-              {message}
+      {/* Formulario */}
+      <Card className="mt-6 p-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <section className="space-y-4">
+            <h3 className="text-base font-bold text-foreground">
+              Datos personales
+            </h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="first_name" className={labelClass}>
+                  Nombre
+                </label>
+                <div className="relative">
+                  <User className={iconClass} />
+                  <input
+                    id="first_name"
+                    type="text"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    className={inputClass}
+                    autoComplete="given-name"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="last_name" className={labelClass}>
+                  Apellido
+                </label>
+                <div className="relative">
+                  <UserRound className={iconClass} />
+                  <input
+                    id="last_name"
+                    type="text"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    className={inputClass}
+                    autoComplete="family-name"
+                  />
+                </div>
+              </div>
             </div>
-          )}
 
-          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nombre
+              <label htmlFor="email" className={labelClass}>
+                Email
               </label>
               <div className="relative">
-                <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Mail className={iconClass} />
                 <input
-                  type="text"
-                  name="first_name"
-                  value={formData.first_name}
+                  id="email"
+                  type="email"
+                  name="email"
+                  value={formData.email}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                  className={inputClass}
+                  autoComplete="email"
                 />
               </div>
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Apellido
+              <label htmlFor="phone" className={labelClass}>
+                Teléfono
               </label>
               <div className="relative">
-                <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Phone className={iconClass} />
                 <input
-                  type="text"
-                  name="last_name"
-                  value={formData.last_name}
+                  id="phone"
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                  className={inputClass}
+                  autoComplete="tel"
                 />
               </div>
             </div>
-          </div>
+          </section>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <div className="relative">
-              <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-              />
-            </div>
-          </div>
+          <section className="space-y-4 border-t border-border pt-6">
+            <h3 className="text-base font-bold text-foreground">
+              Dirección de envío
+            </h3>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Teléfono
-            </label>
-            <div className="relative">
-              <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Dirección
-            </label>
-            <div className="relative">
-              <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ciudad
+              <label htmlFor="address" className={labelClass}>
+                Dirección
               </label>
-              <input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-              />
+              <div className="relative">
+                <MapPin className={iconClass} />
+                <input
+                  id="address"
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  className={inputClass}
+                  autoComplete="street-address"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Código Postal
-              </label>
-              <input
-                type="text"
-                name="postal_code"
-                value={formData.postal_code}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-              />
-            </div>
-          </div>
 
-          <button
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="city" className={labelClass}>
+                  Ciudad
+                </label>
+                <input
+                  id="city"
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  autoComplete="address-level2"
+                />
+              </div>
+              <div>
+                <label htmlFor="postal_code" className={labelClass}>
+                  Código postal
+                </label>
+                <input
+                  id="postal_code"
+                  type="text"
+                  name="postal_code"
+                  value={formData.postal_code}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  autoComplete="postal-code"
+                />
+              </div>
+            </div>
+          </section>
+
+          <Button
             type="submit"
+            size="lg"
             disabled={isSaving}
-            className="w-full bg-gradient-to-r from-violet-600 to-purple-600 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="w-full"
           >
             {isSaving ? (
               <>
-                <Loader2 className="animate-spin" size={20} />
+                <Loader2 className="animate-spin" />
                 Guardando...
               </>
             ) : (
-              'Guardar Cambios'
+              <>
+                <Save />
+                Guardar cambios
+              </>
             )}
-          </button>
+          </Button>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }
