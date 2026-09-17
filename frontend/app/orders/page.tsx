@@ -16,35 +16,12 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { getOrders, Order } from "@/lib/api";
-import { Badge } from "@/components/ui/badge";
+import { OrderStatusBadge } from "@/lib/order-status";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sileo } from "sileo";
-
-// Los valores de status provienen de backend/orders/models.py (STATUS_CHOICES).
-const ORDER_STATUS_STYLES: Record<
-  string,
-  { variant: "default" | "secondary" | "destructive" | "outline"; className?: string }
-> = {
-  pending: { variant: "secondary" },
-  processing: { variant: "outline" },
-  shipped: {
-    variant: "outline",
-    className: "border-transparent bg-stock/10 text-stock",
-  },
-  delivered: { variant: "default", className: "bg-stock text-white" },
-  cancelled: { variant: "destructive" },
-};
-
-const FALLBACK_STATUS_LABELS: Record<string, string> = {
-  pending: "Pendiente",
-  processing: "Procesando",
-  shipped: "Enviado",
-  delivered: "Entregado",
-  cancelled: "Cancelado",
-};
 
 // Mismos valores que app/checkout/page.tsx (PAYMENT_METHODS).
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -68,22 +45,6 @@ function formatDate(value: string): string {
 
 function paymentMethodLabel(value: string): string {
   return PAYMENT_METHOD_LABELS[value] ?? value.replace(/_/g, " ");
-}
-
-function OrderStatusBadge({
-  status,
-  display,
-}: {
-  status: string;
-  display: string;
-}) {
-  const style = ORDER_STATUS_STYLES[status] ?? { variant: "outline" as const };
-  const label = display || FALLBACK_STATUS_LABELS[status] || status;
-  return (
-    <Badge variant={style.variant} className={style.className}>
-      {label}
-    </Badge>
-  );
 }
 
 export default function OrdersPage() {
