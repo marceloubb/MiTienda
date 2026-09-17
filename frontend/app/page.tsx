@@ -37,6 +37,7 @@ export default function Home() {
         setProducts(productsData);
         setCategories(categoriesData);
       } catch (err) {
+        console.error("Error al cargar productos y categorías:", err);
         setError(
           "Error al cargar los productos. Asegúrate de que el backend esté ejecutándose."
         );
