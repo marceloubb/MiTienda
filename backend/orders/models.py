@@ -47,6 +47,7 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pendiente'),
         ('processing', 'Procesando'),
+        ('ready', 'Listo para despacho'),
         ('shipped', 'Enviado'),
         ('delivered', 'Entregado'),
         ('cancelled', 'Cancelado'),
