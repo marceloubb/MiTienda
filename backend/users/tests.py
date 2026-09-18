@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase, TransactionTestCase
@@ -346,3 +347,148 @@ class StaffDriftSignalTests(TestCase):
 
         user.profile.refresh_from_db()
         self.assertEqual(user.profile.role, 'bodega')
+
+
+class PasswordPolicyRegisterTests(TestCase):
+    """H2 - register enforces AUTH_PASSWORD_VALIDATORS before creating."""
+
+    def _register(self, **overrides):
+        data = {
+            'username': 'policyuser',
+            'email': 'policy@example.com',
+            'password': 'Tr0ub4dor&3',
+        }
+        data.update(overrides)
+        return APIClient().post('/api/users/register/', data, format='json')
+
+    def test_weak_password_rejected_no_account_created(self):
+        response = self._register(
+            username='weakling', email='weak@example.com', password='password'
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('password', response.data)
+        self.assertFalse(User.objects.filter(username='weakling').exists())
+
+    def test_numeric_password_rejected(self):
+        response = self._register(
+            username='numbers1', email='number@example.com', password='12345678'
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.filter(username='numbers1').exists())
+
+    def test_password_similar_to_username_rejected(self):
+        response = self._register(
+            username='peppermint', email='pep@example.com', password='peppermint1'
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.filter(username='peppermint').exists())
+
+    def test_strong_password_accepted(self):
+        response = self._register(
+            username='stronguser', email='strong@example.com', password='Tr0ub4dor&3'
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(User.objects.filter(username='stronguser').exists())
+
+
+class PasswordPolicyStaffCreateTests(TestCase):
+    """H2 - staff-create enforces AUTH_PASSWORD_VALIDATORS."""
+
+    def setUp(self):
+        self.admin = _role_user('boss2', 'admin')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_weak_password_rejected_no_user_created(self):
+        response = self.client.post('/api/staff/users/', {
+            'username': 'newweak', 'email': 'weak@example.com',
+            'password': '12345678', 'role': 'bodega',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('password', response.data)
+        self.assertFalse(User.objects.filter(username='newweak').exists())
+
+    def test_valid_password_succeeds(self):
+        response = self.client.post('/api/staff/users/', {
+            'username': 'newstrong', 'email': 'strong@example.com',
+            'password': 'Tr0ub4dor&3', 'role': 'bodega',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(User.objects.filter(username='newstrong').exists())
+
+
+class RegisterThrottleTests(TestCase):
+    """H4 - register throttled at 5/hour per client IP."""
+
+    def setUp(self):
+        self.client = APIClient()
+        # DRF binds the default cache at import time; clear the same object
+        # so throttle counters never leak across tests within this process.
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+    def test_sixth_register_within_hour_returns_429(self):
+        for i in range(5):
+            response = self.client.post('/api/users/register/', {
+                'username': f'reg{i}', 'email': f'reg{i}@example.com',
+                'password': 'Tr0ub4dor&3',
+            }, format='json')
+            self.assertEqual(response.status_code, 201)
+
+        response = self.client.post('/api/users/register/', {
+            'username': 'reg5', 'email': 'reg5@example.com',
+            'password': 'Tr0ub4dor&3',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 429)
+
+    def test_invalid_register_payloads_still_consume_budget(self):
+        for i in range(5):
+            response = self.client.post('/api/users/register/', {
+                'username': f'bad{i}', 'email': 'malformed-email', 'password': 'x',
+            }, format='json')
+            self.assertEqual(response.status_code, 400)
+
+        response = self.client.post('/api/users/register/', {
+            'username': 'bad5', 'email': 'bad5@example.com',
+            'password': 'Tr0ub4dor&3',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 429)
+
+
+class LoginThrottleTests(TestCase):
+    """H4 - login throttled at 10/min; invalid attempts consume the budget."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='loginuser', password='correctpass')
+        self.client = APIClient()
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+    def test_within_limits_login_succeeds(self):
+        response = self.client.post('/api/users/login/', {
+            'username': 'loginuser', 'password': 'correctpass',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('token', response.data)
+
+    def test_eleventh_login_within_minute_returns_429(self):
+        for i in range(10):
+            response = self.client.post('/api/users/login/', {
+                'username': 'loginuser', 'password': 'wrongpass',
+            }, format='json')
+            self.assertEqual(response.status_code, 401)
+
+        response = self.client.post('/api/users/login/', {
+            'username': 'loginuser', 'password': 'correctpass',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 429)
