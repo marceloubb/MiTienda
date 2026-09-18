@@ -168,3 +168,48 @@ class AdminAccessControlTests(TestCase):
         importlib.reload(mitienda.settings)
         self._reload_urls()
         super().tearDown()
+
+
+class DatabaseSettingsTests(TestCase):
+    """DATABASE_URL selects the psycopg Postgres backend; SQLite stays the dev default."""
+
+    def _reload_settings(self, env):
+        with mock.patch('dotenv.load_dotenv'), mock.patch.dict(os.environ, env, clear=False):
+            import mitienda.settings
+            importlib.reload(mitienda.settings)
+
+    def test_postgres_url_selects_postgresql_backend(self):
+        self._reload_settings({
+            'DATABASE_URL': 'postgres://mitienda:secret@db.example.com:5432/mitienda',
+        })
+        import mitienda.settings
+        db = mitienda.settings.DATABASES['default']
+        self.assertEqual(db['ENGINE'], 'django.db.backends.postgresql')
+        self.assertEqual(db['NAME'], 'mitienda')
+        self.assertEqual(db['USER'], 'mitienda')
+        self.assertEqual(db['PASSWORD'], 'secret')
+        self.assertEqual(db['HOST'], 'db.example.com')
+        self.assertEqual(db['PORT'], 5432)
+
+    def test_non_postgres_url_keeps_sqlite_dev_default(self):
+        self._reload_settings({'DATABASE_URL': 'sqlite:///dev.db'})
+        import mitienda.settings
+        db = mitienda.settings.DATABASES['default']
+        self.assertEqual(db['ENGINE'], 'django.db.backends.sqlite3')
+        self.assertTrue(str(db['NAME']).endswith('db.sqlite3'))
+
+    def test_unset_url_keeps_sqlite_dev_default(self):
+        with mock.patch('dotenv.load_dotenv'), mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop('DATABASE_URL', None)
+            import mitienda.settings
+            importlib.reload(mitienda.settings)
+        import mitienda.settings
+        db = mitienda.settings.DATABASES['default']
+        self.assertEqual(db['ENGINE'], 'django.db.backends.sqlite3')
+        self.assertTrue(str(db['NAME']).endswith('db.sqlite3'))
+
+    def tearDown(self):
+        # Restore the settings module to a healthy state (SQLite dev default).
+        import mitienda.settings
+        importlib.reload(mitienda.settings)
+        super().tearDown()

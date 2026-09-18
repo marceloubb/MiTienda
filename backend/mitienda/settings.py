@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+import urllib.parse
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -103,12 +104,28 @@ WSGI_APPLICATION = 'mitienda.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# PostgreSQL via psycopg when DATABASE_URL is a postgres:// URI (H12);
+# the SQLite dev default is kept when it is not set or not postgres.
+_database_url = os.environ.get('DATABASE_URL')
+if _database_url and _database_url.startswith('postgres://'):
+    _parsed_db = urllib.parse.urlparse(_database_url)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': _parsed_db.path[1:],
+            'USER': _parsed_db.username,
+            'PASSWORD': _parsed_db.password,
+            'HOST': _parsed_db.hostname,
+            'PORT': _parsed_db.port,
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
