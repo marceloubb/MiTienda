@@ -26,7 +26,8 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        token, created = Token.objects.get_or_create(user=user)
+        # H3: a brand-new account gets a brand-new token (never get_or_create).
+        token = Token.objects.create(user=user)
         return Response({
             'user': UserSerializer(user).data,
             'token': token.key
@@ -44,7 +45,10 @@ class LoginView(APIView):
         user = authenticate(username=username, password=password)
 
         if user:
-            token, created = Token.objects.get_or_create(user=user)
+            # H3: single-session rotation - replace every previous token so
+            # replayed tokens die immediately on login.
+            Token.objects.filter(user=user).delete()
+            token = Token.objects.create(user=user)
             return Response({
                 'user': UserSerializer(user).data,
                 'token': token.key
@@ -73,8 +77,26 @@ class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        Token.objects.filter(user=request.user).delete()
+        # H3: scoped logout - only the presented token is deleted.
+        if request.auth is not None:
+            request.auth.delete()
         return Response({'message': 'Sesión cerrada'}, status=status.HTTP_200_OK)
+
+
+class RefreshTokenView(APIView):
+    """POST /api/users/token/refresh/ rotates the presented token (H3)."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_scope = 'token_refresh'
+
+    def post(self, request):
+        if request.auth is None:
+            return Response(
+                {'error': 'Token requerido'}, status=status.HTTP_400_BAD_REQUEST
+            )
+        request.auth.delete()
+        token = Token.objects.create(user=request.user)
+        return Response({'token': token.key})
 
 
 class UserDetailView(APIView):

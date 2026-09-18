@@ -48,6 +48,9 @@ ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').sp
 ADMIN_URL = os.environ.get('DJANGO_ADMIN_URL', 'admin/')
 ADMIN_ALLOWED_IPS = os.environ.get('ADMIN_ALLOWED_IPS')  # None (unrestricted) when unset
 
+# Auth token TTL (H3, default 24h): hours a DRF auth token stays valid.
+DJANGO_TOKEN_TTL_HOURS = int(os.environ.get('DJANGO_TOKEN_TTL_HOURS', '24'))
+
 
 # Application definition
 
@@ -176,7 +179,7 @@ EMAIL_BACKEND = os.environ.get(
 # Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'users.authentication.ExpiringTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
