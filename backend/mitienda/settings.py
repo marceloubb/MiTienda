@@ -42,6 +42,11 @@ DEBUG = _env_bool('DJANGO_DEBUG', 'False')
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Admin access control (H5, H11): env-driven admin URL and IP allowlist.
+# ADMIN_URL is the URL prefix for the Django admin site and must end with '/'.
+ADMIN_URL = os.environ.get('DJANGO_ADMIN_URL', 'admin/')
+ADMIN_ALLOWED_IPS = os.environ.get('ADMIN_ALLOWED_IPS')  # None (unrestricted) when unset
+
 
 # Application definition
 
@@ -66,6 +71,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'mitienda.middleware.AdminIPAllowlistMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

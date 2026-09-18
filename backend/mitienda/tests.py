@@ -3,7 +3,8 @@ import os
 from unittest import mock
 
 from django.core.exceptions import ImproperlyConfigured
-from django.test import TestCase
+from django.test import Client, TestCase, override_settings
+from django.urls import clear_url_caches
 
 PLACEHOLDER_SECRET_KEY = 'django-insecure-ls#+os#hiq*hqg6a9c*yzapi452p*_o$q3k6@%oady%0yxcmxz'
 
@@ -108,4 +109,62 @@ class SecureModeTests(TestCase):
         # Restore the settings module to a healthy state after reloads.
         import mitienda.settings
         importlib.reload(mitienda.settings)
+        super().tearDown()
+
+
+class AdminAccessControlTests(TestCase):
+    """DJANGO_ADMIN_URL drives the admin path; AdminIPAllowlistMiddleware gates it."""
+
+    def _reload_settings(self, env):
+        with mock.patch.dict(os.environ, env, clear=False):
+            import mitienda.settings
+            importlib.reload(mitienda.settings)
+
+    def _reload_urls(self):
+        import mitienda.urls
+        importlib.reload(mitienda.urls)
+        clear_url_caches()
+
+    def test_default_admin_url(self):
+        # DJANGO_ADMIN_URL unset -> admin served at /admin/.
+        import mitienda.settings
+        self.assertEqual(mitienda.settings.ADMIN_URL, 'admin/')
+        response = self.client.get('/admin/login/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_custom_admin_url_setting(self):
+        # DJANGO_ADMIN_URL=backoffice/ -> settings.ADMIN_URL derives backoffice/.
+        self._reload_settings({'DJANGO_ADMIN_URL': 'backoffice/'})
+        import mitienda.settings
+        self.assertEqual(mitienda.settings.ADMIN_URL, 'backoffice/')
+
+    @override_settings(ADMIN_URL='backoffice/')
+    def test_custom_admin_url_routes_admin(self):
+        # settings.ADMIN_URL=backoffice/ -> admin responds at /backoffice/, not /admin/.
+        self._reload_urls()
+        response = self.client.get('/backoffice/login/')
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get('/admin/login/')
+        self.assertEqual(response.status_code, 404)
+
+    @override_settings(ADMIN_ALLOWED_IPS='203.0.113.5')
+    def test_allowlisted_ip_allowed(self):
+        client = Client(REMOTE_ADDR='203.0.113.5')
+        response = client.get('/admin/login/')
+        self.assertEqual(response.status_code, 200)
+
+    @override_settings(ADMIN_ALLOWED_IPS='203.0.113.5')
+    def test_unlisted_ip_denied(self):
+        response = self.client.get('/admin/login/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_allowlist_unset_permits_access(self):
+        response = self.client.get('/admin/login/')
+        self.assertEqual(response.status_code, 200)
+
+    def tearDown(self):
+        # Restore the settings module and URL config to their default state.
+        import mitienda.settings
+        importlib.reload(mitienda.settings)
+        self._reload_urls()
         super().tearDown()
