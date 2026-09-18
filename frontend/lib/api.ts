@@ -137,7 +137,7 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
       options.token != null &&
       !NON_RETRYABLE_ENDPOINTS.some((path) => endpoint.endsWith(path));
 
-    if (!canRetry) throw error;
+    if (!canRetry || options.token == null) throw error;
 
     const freshToken = await refreshToken(options.token);
     if (!freshToken) {
