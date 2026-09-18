@@ -50,6 +50,9 @@ ADMIN_ALLOWED_IPS = os.environ.get('ADMIN_ALLOWED_IPS')  # None (unrestricted) w
 
 # Auth token TTL (H3, default 24h): hours a DRF auth token stays valid.
 DJANGO_TOKEN_TTL_HOURS = int(os.environ.get('DJANGO_TOKEN_TTL_HOURS', '24'))
+# TOTP 2FA gate (H10, default off): enforce X-TOTP on API requests for users
+# with a confirmed device. Off by default so production lockout is impossible.
+DJANGO_2FA_ENFORCED = _env_bool('DJANGO_2FA_ENFORCED', 'False')
 
 
 # Application definition
@@ -66,6 +69,8 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'django_filters',
     'corsheaders',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
     # Apps del proyecto
     'products',
     'orders',
