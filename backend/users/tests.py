@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.db import connection
+from django.db import connection, IntegrityError
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
@@ -631,6 +631,74 @@ class TwoFAGateTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
+
+class EmailUniquenessSerializerTests(TestCase):
+    """H6 - profile update rejects taken emails, keeps one's own, '' free."""
+
+    def setUp(self):
+        self.holder = User.objects.create_user(
+            username='holder', email='a@example.com', password='testpass123'
+        )
+        self.editor = User.objects.create_user(
+            username='editor', email='', password='testpass123'
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.editor)
+
+    def test_taken_email_rejected(self):
+        response = self.client.put('/api/users/profile/', {
+            'email': 'a@example.com',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.editor.refresh_from_db()
+        self.assertEqual(self.editor.email, '')
+
+    def test_own_email_retained(self):
+        client = APIClient()
+        client.force_authenticate(user=self.holder)
+
+        response = client.put('/api/users/profile/', {
+            'email': 'a@example.com',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.holder.refresh_from_db()
+        self.assertEqual(self.holder.email, 'a@example.com')
+
+    def test_registration_with_taken_email_rejected(self):
+        response = APIClient().post('/api/users/register/', {
+            'username': 'copycat', 'email': 'a@example.com',
+            'password': 'Tr0ub4dor&3',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.filter(username='copycat').exists())
+
+
+class EmailUniquenessConstraintTests(TestCase):
+    """H6 - migration 0003: DB-level conditional uniqueness on non-empty emails.
+
+    Runs before StaffRoleBackfillMigrationTests alphabetically, so the partial
+    unique index is present when these assertions execute.
+    """
+
+    def test_duplicate_non_empty_email_blocked_at_db(self):
+        User.objects.create_user(
+            username='first', email='dupe@example.com', password='testpass123'
+        )
+
+        with self.assertRaises(IntegrityError):
+            User.objects.create_user(
+                username='second', email='dupe@example.com', password='testpass123'
+            )
+
+    def test_empty_emails_remain_repeatable(self):
+        User.objects.create_user(username='empty1', email='', password='testpass123')
+        User.objects.create_user(username='empty2', email='', password='testpass123')
+
+        self.assertEqual(User.objects.filter(email='').count(), 2)
 
 
 class TokenTTLTests(TestCase):

@@ -143,3 +143,17 @@ class UpdateProfileSerializer(serializers.Serializer):
                 setattr(profile, field, data[field])
         profile.save()
         return user
+
+    def validate_email(self, value):
+        # H6: empty emails stay repeatable; non-empty ones must be unique,
+        # excluding the requesting user's own email via the request context.
+        if not value:
+            return value
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request is not None else None
+        taken = User.objects.filter(email=value)
+        if user is not None and user.is_authenticated:
+            taken = taken.exclude(pk=user.pk)
+        if taken.exists():
+            raise serializers.ValidationError("El email ya está registrado.")
+        return value
