@@ -1,8 +1,12 @@
+import os
+import threading
 from decimal import Decimal
+from unittest import skipUnless
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.db import connection
+from django.test import TestCase, TransactionTestCase
 from rest_framework.test import APIClient
 
 from orders.models import Cart, CartItem, Order, OrderItem
@@ -827,3 +831,66 @@ class DiscrepancyFlowTests(StaffOrderTestBase):
         self.assertEqual(flagged_data['status'], 'discrepancy')
         self.assertEqual(flagged_data['discrepancy_reason'], 'damaged')
         self.assertEqual(normal_data['discrepancy_reason'], '')
+
+
+@skipUnless(
+    os.environ.get('DATABASE_URL', '').startswith('postgres://'),
+    'Concurrency lock semantics require PostgreSQL (set DATABASE_URL).',
+)
+class ConcurrentCheckoutTests(TransactionTestCase):
+    """Two racing checkouts for stock=1: exactly one succeeds (H12 lock semantics)."""
+
+    def _checkout_payload(self):
+        return {
+            'shipping_name': 'Race User',
+            'shipping_address': '1 Race St',
+            'shipping_city': 'Race City',
+            'shipping_postal_code': '12345',
+            'shipping_phone': '555-0000',
+            'payment_method': 'card',
+        }
+
+    def test_concurrent_checkout_does_not_oversell(self):
+        category = Category.objects.create(name='Race Category')
+        product = Product.objects.create(
+            name='Race Product',
+            description='Description',
+            price=Decimal('9.99'),
+            category=category,
+            stock=1,
+        )
+        usernames = ('racer-a', 'racer-b')
+        for username in usernames:
+            user = User.objects.create_user(username=username, password='testpass123')
+            cart = Cart.objects.create(user=user)
+            CartItem.objects.create(cart=cart, product=product, quantity=1)
+
+        statuses = {}
+        barrier = threading.Barrier(2)
+
+        def checkout(username):
+            # Fresh connection per thread so each request runs in its own
+            # transaction and select_for_update actually blocks on PG.
+            connection.close()
+            try:
+                client = APIClient()
+                client.force_authenticate(user=User.objects.get(username=username))
+                barrier.wait()
+                response = client.post(
+                    '/api/orders/create_from_cart/',
+                    self._checkout_payload(),
+                    format='json',
+                )
+                statuses[username] = response.status_code
+            finally:
+                connection.close()
+
+        threads = [threading.Thread(target=checkout, args=(name,)) for name in usernames]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual(sorted(statuses.values()), [201, 400])
+        product.refresh_from_db()
+        self.assertEqual(product.stock, 0)
