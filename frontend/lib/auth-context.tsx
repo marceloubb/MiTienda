@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { User, Cart, UserRole } from '@/lib/api';
-import { getProfile, getCart } from '@/lib/api';
+import { User, Cart, UserRole, APIError } from '@/lib/api';
+import { getProfile, getCart, onTokenChange, setActiveToken } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -39,12 +39,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         total: cartData.total || '0',
         total_items: cartData.total_items || 0,
       });
-    } catch {
-      localStorage.removeItem('token');
-      setToken(null);
+    } catch (error) {
+      // F3: clear the session only on genuine auth failures (401/403, or a
+      // refresh failure already handled by api.ts). Transient 5xx and network
+      // errors must NOT log the user out.
+      const status = error instanceof APIError ? error.status : undefined;
+      if (status === 401 || status === 403) {
+        setActiveToken(null);
+      }
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  // Keep localStorage and app state in sync with the API client: refresh
+  // rotation and refresh-failure clearing both land here, and login/logout
+  // push changes back through setActiveToken.
+  useEffect(() => {
+    return onTokenChange((nextToken) => {
+      if (nextToken) {
+        localStorage.setItem('token', nextToken);
+        setToken(nextToken);
+      } else {
+        localStorage.removeItem('token');
+        setToken(null);
+        setUser(null);
+        setCart(null);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -54,8 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token, loadProfile]);
 
   function login(newToken: string, userData: User) {
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
+    setActiveToken(newToken); // persists + updates state via the token-change hook
     setUser(userData);
     getCart(newToken).then((cartData) =>
       setCart({
@@ -72,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setUser(null);
     setCart(null);
+    setActiveToken(null); // keep the API client's active token in sync
   }
 
   function updateCart(cartData: Cart) {

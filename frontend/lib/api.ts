@@ -23,7 +23,67 @@ function formatFieldMessage(fields: Record<string, string[]>): string {
   return parts.join(' · ') || 'Error en la petición';
 }
 
-async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
+// --- Token lifecycle (H3, F1, F3) -------------------------------------------
+//
+// The API client owns the single retry-on-401 policy: one refresh attempt,
+// then one retry of the original request. When the refresh fails, the token is
+// cleared through the change hook below, which logs the user out.
+
+type TokenChangeHandler = (token: string | null) => void;
+
+let tokenChangeHandler: TokenChangeHandler | null = null;
+
+/**
+ * Register a handler called whenever the API client's active token changes
+ * (rotation on refresh, clearing on refresh failure). Returns an unregister
+ * function for effect cleanup.
+ */
+export function onTokenChange(handler: TokenChangeHandler): () => void {
+  tokenChangeHandler = handler;
+  return () => {
+    if (tokenChangeHandler === handler) tokenChangeHandler = null;
+  };
+}
+
+/** Propagate token changes from the application into the API client. */
+export function setActiveToken(token: string | null): void {
+  tokenChangeHandler?.(token);
+}
+
+// Endpoints authenticated by credentials rather than a token must never be
+// auto-refreshed: a 401 there means bad credentials, not an expired token.
+const NON_RETRYABLE_ENDPOINTS = ['/users/login/', '/users/register/', '/users/token/refresh/'];
+
+// A burst of parallel 401s (e.g. profile + cart) shares one in-flight refresh:
+// the backend rotates the token on every refresh, so concurrent refreshes would
+// invalidate each other. Every waiting request retries once with the new token.
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function refreshToken(token: string): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const response = await fetch(`${API_URL}/users/token/refresh/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Token ${token}`,
+          },
+        });
+        if (!response.ok) return null;
+        const body = (await response.json()) as { token?: unknown };
+        return typeof body.token === 'string' ? body.token : null;
+      } catch {
+        return null;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+  }
+  return refreshInFlight;
+}
+
+async function performFetch<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
   const { token, ...fetchOptions } = options;
 
   const headers: HeadersInit = {
@@ -65,6 +125,34 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
   }
 
   return response.json();
+}
+
+async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
+  try {
+    return await performFetch<T>(endpoint, options);
+  } catch (error) {
+    const status = error instanceof APIError ? error.status : undefined;
+    const canRetry =
+      status === 401 &&
+      options.token != null &&
+      !NON_RETRYABLE_ENDPOINTS.some((path) => endpoint.endsWith(path));
+
+    if (!canRetry) throw error;
+
+    const freshToken = await refreshToken(options.token);
+    if (!freshToken) {
+      // Refresh failed: the session is unrecoverable. Clear the token so
+      // listeners (auth-context) log the user out.
+      setActiveToken(null);
+      throw error;
+    }
+
+    setActiveToken(freshToken);
+
+    // Exactly one retry of the original request with the rotated token. A
+    // second 401/403 is surfaced to the caller unchanged.
+    return performFetch<T>(endpoint, { ...options, token: freshToken });
+  }
 }
 
 // Products
