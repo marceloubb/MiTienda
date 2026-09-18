@@ -200,6 +200,83 @@ class CartItemUpdateTests(TestCase):
         self.cart_item.refresh_from_db()
         self.assertEqual(self.cart_item.quantity, 2)
 
+    def test_string_product_id_does_not_bypass_stock(self):
+        self.product.stock = 3
+        self.product.save()
+
+        response = self.client.post('/api/cart/update_item/', {
+            'product_id': str(self.product.id),
+            'quantity': 5,
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.cart_item.refresh_from_db()
+        self.assertEqual(self.cart_item.quantity, 2)
+
+
+class CumulativeAddItemTests(TestCase):
+    """add_item validates the cumulative quantity against stock (H7)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='cumul', password='testpass123')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+        self.category = Category.objects.create(name='Test Category')
+        self.product = Product.objects.create(
+            name='Test Product',
+            description='Description',
+            price=Decimal('10.00'),
+            category=self.category,
+            stock=5,
+        )
+
+    def _cart_item(self):
+        cart = Cart.objects.get(user=self.user)
+        return cart.items.get(product=self.product)
+
+    def test_cumulative_addition_rejected(self):
+        self.client.post('/api/cart/add_item/', {
+            'product_id': self.product.id, 'quantity': 3,
+        }, format='json')
+
+        response = self.client.post('/api/cart/add_item/', {
+            'product_id': self.product.id, 'quantity': 3,
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self._cart_item().refresh_from_db()
+        self.assertEqual(self._cart_item().quantity, 3)
+
+    def test_cumulative_addition_within_stock(self):
+        self.client.post('/api/cart/add_item/', {
+            'product_id': self.product.id, 'quantity': 2,
+        }, format='json')
+
+        response = self.client.post('/api/cart/add_item/', {
+            'product_id': self.product.id, 'quantity': 2,
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        self._cart_item().refresh_from_db()
+        self.assertEqual(self._cart_item().quantity, 4)
+
+    def test_add_item_rejects_quantity_zero_and_non_numeric(self):
+        for bad_quantity in (0, 'abc'):
+            response = self.client.post('/api/cart/add_item/', {
+                'product_id': self.product.id, 'quantity': bad_quantity,
+            }, format='json')
+            self.assertEqual(response.status_code, 400)
+        self.assertFalse(CartItem.objects.filter(cart__user=self.user).exists())
+
+    def test_first_addition_creates_cart_item(self):
+        response = self.client.post('/api/cart/add_item/', {
+            'product_id': self.product.id, 'quantity': 2,
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(self._cart_item().quantity, 2)
+
 
 def _role_user(username, role):
     user = User.objects.create_user(username=username, password='testpass123')
