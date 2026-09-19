@@ -18,11 +18,12 @@ import { getCategories, Category } from "@/lib/api";
 import type { UserRole } from "@/lib/api";
 import { getCategoryIconElement } from "@/lib/category-icons";
 
-// Role → staff navigation links (design Navbar role map): admin sees all
-// three; bodega/despacho only their own surface; customer none.
+// Role → staff navigation links (design Navbar role map): admin sees one link
+// per task surface; bodega/despacho only their own; customer none.
 const STAFF_LINKS: Record<UserRole, { href: string; label: string }[]> = {
   admin: [
-    { href: "/admin", label: "Administración" },
+    { href: "/admin/orders", label: "Pedidos" },
+    { href: "/admin/staff", label: "Staff" },
     { href: "/bodega", label: "Bodega" },
     { href: "/despacho", label: "Despacho" },
   ],
