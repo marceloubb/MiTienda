@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, RotateCcw, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { listStaffUsers, type StaffUser } from "@/lib/api";
@@ -33,25 +33,40 @@ export default function StaffUserList({ reloadKey = 0 }: StaffUserListProps) {
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    if (!token) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      setUsers(await listStaffUsers(token));
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "No se pudo cargar el resumen del staff."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [token]);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh, reloadKey]);
+    let cancelled = false;
+    if (!token) return;
+
+    listStaffUsers(token)
+      .then((data) => {
+        if (!cancelled) {
+          setUsers(data);
+          setError(null);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "No se pudo cargar el resumen del staff."
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, reloadKey, retryKey]);
+
+  function refresh() {
+    setRetryKey((key) => key + 1);
+  }
 
   if (isLoading) {
     return (
@@ -75,7 +90,7 @@ export default function StaffUserList({ reloadKey = 0 }: StaffUserListProps) {
         <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
           <AlertTriangle className="size-10 text-destructive" />
           <p className="text-sm font-medium text-foreground">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => void refresh()}>
+          <Button variant="outline" size="sm" onClick={refresh}>
             <RotateCcw />
             Reintentar
           </Button>
