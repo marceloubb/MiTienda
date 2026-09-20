@@ -1,7 +1,7 @@
 from django.urls import path
 
-from .views import StaffUserCreateView
+from .views import StaffUserView
 
 urlpatterns = [
-    path('users/', StaffUserCreateView.as_view(), name='staff-user-create'),
+    path('users/', StaffUserView.as_view(), name='staff-user'),
 ]
