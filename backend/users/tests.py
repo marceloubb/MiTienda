@@ -320,6 +320,101 @@ class StaffUserCreationTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
 
+class StaffUserListViewTests(TestCase):
+    """GET /api/staff/users/ is admin-only, id-ordered, exact field set."""
+
+    def setUp(self):
+        self.admin = _role_user('list-admin', 'admin')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_admin_lists_staff_with_exact_fields(self):
+        bodega = _role_user('bodega-listed', 'bodega')
+
+        response = self.client.get('/api/staff/users/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 2)
+        entry = next(u for u in response.data if u['username'] == 'bodega-listed')
+        self.assertEqual(set(entry.keys()), {'id', 'username', 'email', 'role', 'is_staff'})
+        self.assertEqual(entry['role'], 'bodega')
+        self.assertEqual(entry['email'], bodega.email)
+        self.assertFalse(entry['is_staff'])
+        self.assertNotIn('profile', entry)
+        self.assertNotIn('first_name', entry)
+        self.assertNotIn('last_name', entry)
+
+    def test_customer_omitted_from_staff_list(self):
+        _role_user('plain-customer', 'customer')
+
+        response = self.client.get('/api/staff/users/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([u['username'] for u in response.data], ['list-admin'])
+
+    def test_list_ordered_by_id(self):
+        _role_user('bodega-1', 'bodega')
+        _role_user('despacho-1', 'despacho')
+        _role_user('bodega-2', 'bodega')
+
+        response = self.client.get('/api/staff/users/')
+
+        self.assertEqual(response.status_code, 200)
+        ids = [u['id'] for u in response.data]
+        self.assertEqual(ids, sorted(ids))
+
+    def test_bodega_denied_without_data_reveal(self):
+        staff = _role_user('bodega-nosey', 'bodega')
+        _role_user('hidden-admin', 'admin')
+        client = APIClient()
+        client.force_authenticate(user=staff)
+
+        response = client.get('/api/staff/users/')
+
+        self.assertEqual(response.status_code, 403)
+        self.assertNotIn('username', response.data)
+
+    def test_despacho_denied(self):
+        despacho = _role_user('despacho-nosey', 'despacho')
+        client = APIClient()
+        client.force_authenticate(user=despacho)
+
+        response = client.get('/api/staff/users/')
+
+        self.assertEqual(response.status_code, 403)
+        self.assertNotIn('username', response.data)
+
+    def test_customer_denied(self):
+        customer = _role_user('customer-nosey', 'customer')
+        client = APIClient()
+        client.force_authenticate(user=customer)
+
+        response = client.get('/api/staff/users/')
+
+        self.assertEqual(response.status_code, 403)
+        self.assertNotIn('username', response.data)
+
+    def test_anonymous_unauthorized(self):
+        response = APIClient().get('/api/staff/users/')
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_created_user_appears_in_later_list(self):
+        self.client.post('/api/staff/users/', {
+            'username': 'despacho-new',
+            'email': 'despacho-new@example.com',
+            'password': 'longpass123',
+            'role': 'despacho',
+        }, format='json')
+
+        response = self.client.get('/api/staff/users/')
+
+        self.assertEqual(response.status_code, 200)
+        entry = next(u for u in response.data if u['username'] == 'despacho-new')
+        self.assertEqual(entry['role'], 'despacho')
+        self.assertFalse(entry['is_staff'])
+
+
 class StaffDriftSignalTests(TestCase):
     """User post_save keeps role consistent with the is_staff flag."""
 
