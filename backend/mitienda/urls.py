@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.decorators import api_view, permission_classes
@@ -27,7 +28,7 @@ def api_root(request):
 
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path(settings.ADMIN_URL, admin.site.urls),
     path('api/', api_root, name='api-root'),
     path('api/', include('products.urls')),
     path('api/', include('orders.urls')),

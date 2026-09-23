@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+import urllib.parse
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -23,6 +24,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 
+def _env_bool(name, default='False'):
+    """Parse a boolean environment variable ('true', '1', 'yes' are truthy)."""
+    return os.environ.get(name, default).lower() in ('true', '1', 'yes')
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
@@ -33,9 +39,14 @@ SECRET_KEY = os.environ.get(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
+DEBUG = _env_bool('DJANGO_DEBUG', 'False')
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+# Admin access control (H5, H11): env-driven admin URL and IP allowlist.
+# ADMIN_URL is the URL prefix for the Django admin site and must end with '/'.
+ADMIN_URL = os.environ.get('DJANGO_ADMIN_URL', 'admin/')
+ADMIN_ALLOWED_IPS = os.environ.get('ADMIN_ALLOWED_IPS')  # None (unrestricted) when unset
 
 
 # Application definition
@@ -61,6 +72,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'mitienda.middleware.AdminIPAllowlistMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -92,12 +104,28 @@ WSGI_APPLICATION = 'mitienda.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# PostgreSQL via psycopg when DATABASE_URL is a postgres:// URI (H12);
+# the SQLite dev default is kept when it is not set or not postgres.
+_database_url = os.environ.get('DATABASE_URL')
+if _database_url and _database_url.startswith('postgres://'):
+    _parsed_db = urllib.parse.urlparse(_database_url)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': _parsed_db.path[1:],
+            'USER': _parsed_db.username,
+            'PASSWORD': _parsed_db.password,
+            'HOST': _parsed_db.hostname,
+            'PORT': _parsed_db.port,
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -167,7 +195,16 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
 ]
 
-CORS_ALLOW_CREDENTIALS = True
+# Reject cross-origin credentialed requests (H9); token-header requests stay functional.
+CORS_ALLOW_CREDENTIALS = False
+
+# Env-gated secure settings block (H9): off by default for development.
+if _env_bool('DJANGO_SECURE_MODE'):
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '31536000'))
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Fail early in production with the development placeholder SECRET_KEY
 if not DEBUG and SECRET_KEY == 'django-insecure-ls#+os#hiq*hqg6a9c*yzapi452p*_o$q3k6@%oady%0yxcmxz':
