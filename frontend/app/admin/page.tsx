@@ -1,38 +1,26 @@
-import { ShieldCheck } from "lucide-react";
-import RequireRole from "@/components/RequireRole";
-import StaffUserForm from "@/components/admin/StaffUserForm";
-import OrdersDashboard from "@/components/admin/OrdersDashboard";
-import DiscrepancyPanel from "@/components/admin/DiscrepancyPanel";
+"use client";
 
-// Superficie de administración: pedidos, usuarios del staff y discrepancias.
-// El guard es UX-only; la aplicación real de roles vive en las DRF permissions.
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import RequireRole from "@/components/RequireRole";
+
+// /admin ya no mezcla tareas: cada superficie tiene una ruta propia y esta
+// página redirige al admin al panel de pedidos. El guard es UX-only; la
+// aplicación real de roles vive en las DRF permissions.
 export default function AdminPage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && user?.role === "admin") {
+      router.replace("/admin/orders");
+    }
+  }, [isLoading, router, user]);
+
   return (
     <RequireRole roles={["admin"]}>
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mt-3 flex items-center gap-3">
-          <ShieldCheck className="size-8 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">
-            Administración
-          </h1>
-        </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Gestión de pedidos, usuarios del staff y discrepancias.
-        </p>
-
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <section aria-label="Pedidos" className="min-w-0 lg:col-span-2">
-            <OrdersDashboard />
-          </section>
-          <aside aria-label="Usuario del staff" className="min-w-0">
-            <StaffUserForm />
-          </aside>
-        </div>
-
-        <div className="mt-6">
-          <DiscrepancyPanel />
-        </div>
-      </div>
+      <></>
     </RequireRole>
   );
 }

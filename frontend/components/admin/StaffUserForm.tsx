@@ -36,7 +36,12 @@ const ROLE_HINTS: Record<StaffRole, string> = {
 const fieldClasses =
   "h-9 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50";
 
-export default function StaffUserForm() {
+interface StaffUserFormProps {
+  /** Callback tras crear un usuario con éxito (refresca el resumen del staff). */
+  onCreated?: () => void;
+}
+
+export default function StaffUserForm({ onCreated }: StaffUserFormProps) {
   const { token } = useAuth();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -61,6 +66,7 @@ export default function StaffUserForm() {
       setEmail("");
       setPassword("");
       setRole("bodega");
+      onCreated?.();
     } catch (err) {
       if (err instanceof APIError && err.fields) {
         const detail = Object.entries(err.fields)

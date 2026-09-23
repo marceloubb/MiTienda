@@ -338,6 +338,13 @@ export async function createStaffUser(
   });
 }
 
+// Staff users list (admin only). El GET llega en el slice 2 del cambio
+// admin-ux-reorganization; hasta entonces el resumen lo tolera con su estado
+// de error.
+export async function listStaffUsers(token: string) {
+  return fetchAPI<StaffUser[]>('/staff/users/', { token });
+}
+
 // Types
 export interface Product {
   id: number;
@@ -397,6 +404,16 @@ export interface UserProfile {
   address: string;
   city: string;
   postal_code: string;
+}
+
+// Proyección del listado de staff (GET /staff/users/): sin datos extra de PII
+// más allá del contrato del endpoint.
+export interface StaffUser {
+  id: number;
+  username: string;
+  email: string;
+  role: Exclude<UserRole, 'customer'>;
+  is_staff: boolean;
 }
 
 export interface Cart {
