@@ -1,6 +1,30 @@
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import UserProfile
+
+
+def _validate_password_with_user(attrs):
+    """Enforce AUTH_PASSWORD_VALIDATORS against a tentative User instance.
+
+    Cross-field validation via validate(): the attribute similarity validator
+    needs username/email, which are only known once all fields are collected.
+    """
+    password = attrs.get('password')
+    if not password:
+        return attrs
+    user = User(
+        username=attrs.get('username', ''),
+        email=attrs.get('email', ''),
+        first_name=attrs.get('first_name', ''),
+        last_name=attrs.get('last_name', ''),
+    )
+    try:
+        validate_password(password, user=user)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError({'password': list(exc.messages)})
+    return attrs
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -49,6 +73,9 @@ class StaffUserSerializer(serializers.Serializer):
             raise serializers.ValidationError("El email ya está registrado.")
         return value
 
+    def validate(self, attrs):
+        return _validate_password_with_user(attrs)
+
     def create(self, validated_data):
         role = validated_data.pop('role')
         user = User.objects.create_user(
@@ -77,6 +104,9 @@ class RegisterSerializer(serializers.Serializer):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("El email ya está registrado.")
         return value
+
+    def validate(self, attrs):
+        return _validate_password_with_user(attrs)
 
     def create(self, validated_data):
         user = User.objects.create_user(

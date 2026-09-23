@@ -187,6 +187,14 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'register': '5/hour',
+        'login': '10/min',
+        'token_refresh': '10/min',
+    },
 }
 
 # CORS Configuration
