@@ -6,15 +6,15 @@ Restrict write operations on products and categories to staff users only. Unauth
 
 ## Requirements
 
-### Requirement: Staff-Only Product Writes
+### Requirement: Admin-Only Product Writes
 
-The system MUST restrict POST, PUT, PATCH, DELETE on product resources to staff users only. Bodega and despacho roles are NOT staff — they have `is_staff=False` and MUST be denied product writes. Unauthenticated and customer users remain read-only. Only admin users (who have `is_staff=True` via role sync) may write products.
+The system MUST restrict POST, PUT, PATCH, DELETE on product resources to users whose profile role is `ROLE_ADMIN`. The permission check MUST read the profile role, not the `is_staff` flag. Bodega and despacho roles MUST be denied product writes. Unauthenticated and customer users remain read-only.
 
-(Previously: any user with `is_staff=True` could write products)
+(Previously: the check used `User.is_staff`; bodega/despacho were denied only because they are not staff — a transient flag desync could mis-grant or mis-deny.)
 
-#### Scenario: Non-staff write rejected
+#### Scenario: Non-admin write rejected
 
-- GIVEN an authenticated non-staff user
+- GIVEN an authenticated user with a non-admin role
 - WHEN the user sends POST, PUT, PATCH, or DELETE to `/api/products/`
 - THEN the response is 403
 
@@ -24,21 +24,27 @@ The system MUST restrict POST, PUT, PATCH, DELETE on product resources to staff 
 - WHEN the user sends POST to `/api/products/`
 - THEN the response is 403
 
-#### Scenario: Staff write succeeds
+#### Scenario: Admin write succeeds
 
-- GIVEN an authenticated staff user
+- GIVEN an authenticated user with role `ROLE_ADMIN`
 - WHEN the user sends POST to `/api/products/` with valid data
 - THEN the response is 201
 
+#### Scenario: Role is the source of truth
+
+- GIVEN an authenticated user with role `ROLE_ADMIN` whose `is_staff` flag is transiently False
+- WHEN the user sends POST to `/api/products/` with valid data
+- THEN the response is 201 (role governs, not the flag)
+
 #### Scenario: Bodega write rejected
 
-- GIVEN an authenticated user with `role=bodega` and `is_staff=False`
+- GIVEN an authenticated user with `role=bodega`
 - WHEN the user sends POST to `/api/products/`
 - THEN the response is 403
 
 #### Scenario: Despacho write rejected
 
-- GIVEN an authenticated user with `role=despacho` and `is_staff=False`
+- GIVEN an authenticated user with `role=despacho`
 - WHEN the user sends POST to `/api/products/`
 - THEN the response is 403
 
@@ -48,26 +54,26 @@ The system MUST restrict POST, PUT, PATCH, DELETE on product resources to staff 
 - WHEN the user sends GET to `/api/products/`
 - THEN the response is 200 with product list
 
-### Requirement: Staff-Only Category Writes
+### Requirement: Admin-Only Category Writes
 
-The system MUST restrict POST, PUT, PATCH, DELETE on category resources to staff users only. Bodega and despacho roles are NOT staff and MUST be denied category writes.
+The system MUST restrict POST, PUT, PATCH, DELETE on category resources to users whose profile role is `ROLE_ADMIN`, read from the profile role rather than the `is_staff` flag. Bodega and despacho MUST be denied category writes.
 
-(Previously: any user with `is_staff=True` could write categories)
+(Previously: the check used `is_staff`.)
 
-#### Scenario: Non-staff category write rejected
+#### Scenario: Non-admin category write rejected
 
-- GIVEN an authenticated non-staff user
+- GIVEN an authenticated non-admin user
 - WHEN the user sends POST to `/api/categories/`
 - THEN the response is 403
 
-#### Scenario: Staff category write succeeds
+#### Scenario: Admin category write succeeds
 
-- GIVEN an authenticated staff user
+- GIVEN an authenticated user with role `ROLE_ADMIN`
 - WHEN the user sends POST to `/api/categories/` with valid data
 - THEN the response is 201
 
 #### Scenario: Bodega category write rejected
 
-- GIVEN an authenticated user with `role=bodega` and `is_staff=False`
+- GIVEN an authenticated user with role `bodega`
 - WHEN the user sends POST to `/api/categories/`
 - THEN the response is 403
