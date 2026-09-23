@@ -64,23 +64,24 @@ class CartViewSet(viewsets.ReadOnlyModelViewSet):
 
         product = get_object_or_404(Product, id=product_id, is_active=True)
 
-        if product.stock < quantity:
+        # Cumulative check: the existing cart quantity plus the addition must
+        # fit within available stock (H7).
+        cart_item = CartItem.objects.filter(cart=cart, product=product).first()
+        existing_quantity = cart_item.quantity if cart_item else 0
+
+        if product.stock < existing_quantity + quantity:
             return Response(
                 {'error': 'Stock insuficiente'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        cart_item, created = CartItem.objects.get_or_create(
-            cart=cart,
-            product=product,
-            defaults={'quantity': quantity}
-        )
-
-        if not created:
+        if cart_item:
             cart_item.quantity += quantity
             cart_item.save()
+        else:
+            CartItem.objects.create(cart=cart, product=product, quantity=quantity)
 
-        return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)
+        return Response(CartSerializer(cart).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['post'])
     def remove_item(self, request):

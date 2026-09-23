@@ -44,11 +44,11 @@ class UpdateCartItemSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1)
 
-    def validate_quantity(self, value):
-        product_id = self.initial_data.get('product_id')
-        if isinstance(product_id, int) and not isinstance(product_id, bool):
-            _check_stock(product_id, value)
-        return value
+    def validate(self, attrs):
+        # Always check stock: attrs['product_id'] is the DRF-coerced int, so a
+        # numeric-string product_id can no longer bypass the check.
+        _check_stock(attrs['product_id'], attrs['quantity'])
+        return attrs
 
 
 class OrderItemSerializer(serializers.ModelSerializer):

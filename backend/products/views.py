@@ -5,15 +5,28 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 from django.db import models
 from django_filters.rest_framework import DjangoFilterBackend
+from users.models import UserProfile
+from users.permissions import get_user_role
 from .models import Category, Product
 from .serializers import CategorySerializer, ProductSerializer, ProductListSerializer
 
 
-class IsStaffOrReadOnly(BasePermission):
-    """Allow read-only access to everyone; writes require a staff user."""
+class IsAdminOrReadOnly(BasePermission):
+    """Allow read-only access to everyone; writes require role == ROLE_ADMIN.
+
+    The check reads the profile role, not the is_staff flag, so a transient
+    flag desync can neither mis-grant nor mis-deny product/category writes.
+    """
 
     def has_permission(self, request, view):
-        return request.method in SAFE_METHODS or (request.user and request.user.is_staff)
+        return (
+            request.method in SAFE_METHODS
+            or (
+                request.user
+                and request.user.is_authenticated
+                and get_user_role(request.user) == UserProfile.ROLE_ADMIN
+            )
+        )
 
 
 class StaffWriteDeniedViewMixin:
@@ -26,7 +39,7 @@ class StaffWriteDeniedViewMixin:
 class CategoryViewSet(StaffWriteDeniedViewMixin, viewsets.ModelViewSet):
     queryset = Category.objects.filter(is_active=True)
     serializer_class = CategorySerializer
-    permission_classes = [IsStaffOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'description']
 
@@ -34,7 +47,7 @@ class CategoryViewSet(StaffWriteDeniedViewMixin, viewsets.ModelViewSet):
 class ProductViewSet(StaffWriteDeniedViewMixin, viewsets.ModelViewSet):
     queryset = Product.objects.filter(is_active=True).select_related('category')
     serializer_class = ProductSerializer
-    permission_classes = [IsStaffOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category', 'is_featured']
     search_fields = ['name', 'description']

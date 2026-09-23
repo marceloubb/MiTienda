@@ -6,8 +6,8 @@ from products.models import Category, Product
 from users.models import UserProfile
 
 
-class StaffOrReadOnlyTests(TestCase):
-    """Writes to products and categories require a staff user."""
+class AdminOrReadOnlyTests(TestCase):
+    """Writes to products and categories require the admin profile role."""
 
     def setUp(self):
         self.category = Category.objects.create(name='Test Category')
@@ -21,7 +21,47 @@ class StaffOrReadOnlyTests(TestCase):
             'stock': 5,
         }
 
-    def test_non_staff_product_write_rejected(self):
+    def _admin_client(self):
+        user = User.objects.create_user(
+            username='admin-user', password='testpass123'
+        )
+        UserProfile.objects.create(user=user, role=UserProfile.ROLE_ADMIN)
+        self.assertTrue(user.is_staff)  # profile save mirrors role -> is_staff
+        client = APIClient()
+        client.force_authenticate(user=user)
+        return client
+
+    def test_admin_product_write_succeeds(self):
+        client = self._admin_client()
+
+        response = client.post('/api/products/', self._product_data(), format='json')
+
+        self.assertEqual(response.status_code, 201)
+
+    def test_admin_category_write_succeeds(self):
+        client = self._admin_client()
+
+        response = client.post('/api/categories/', {'name': 'New Category'}, format='json')
+
+        self.assertEqual(response.status_code, 201)
+
+    def test_role_beats_is_staff_flag(self):
+        # Drift the is_staff flag with a raw update: save() would fire the
+        # role-sync signal and auto-heal the desync, which is a different
+        # (legitimate) code path. Direct writes are how drift reaches the DB.
+        self._admin_client()
+        User.objects.filter(username='admin-user').update(is_staff=False)
+        user = User.objects.get(username='admin-user')
+        self.assertFalse(user.is_staff)
+        self.assertEqual(user.profile.role, UserProfile.ROLE_ADMIN)
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.post('/api/products/', self._product_data(), format='json')
+
+        self.assertEqual(response.status_code, 201)
+
+    def test_non_admin_product_write_rejected(self):
         user = User.objects.create_user(username='regular', password='testpass123')
         client = APIClient()
         client.force_authenticate(user=user)
@@ -34,16 +74,6 @@ class StaffOrReadOnlyTests(TestCase):
 
         response = client.post('/api/products/', self._product_data(), format='json')
         self.assertEqual(response.status_code, 403)
-
-    def test_staff_product_write_succeeds(self):
-        staff = User.objects.create_user(
-            username='staff-user', password='testpass123', is_staff=True
-        )
-        client = APIClient()
-        client.force_authenticate(user=staff)
-
-        response = client.post('/api/products/', self._product_data(), format='json')
-        self.assertEqual(response.status_code, 201)
 
     def test_unauthenticated_read_allowed(self):
         Product.objects.create(
@@ -59,7 +89,7 @@ class StaffOrReadOnlyTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
 
-    def test_non_staff_category_write_rejected(self):
+    def test_non_admin_category_write_rejected(self):
         user = User.objects.create_user(username='regular', password='testpass123')
         client = APIClient()
         client.force_authenticate(user=user)
@@ -67,19 +97,9 @@ class StaffOrReadOnlyTests(TestCase):
         response = client.post('/api/categories/', {'name': 'New Category'}, format='json')
         self.assertEqual(response.status_code, 403)
 
-    def test_staff_category_write_succeeds(self):
-        staff = User.objects.create_user(
-            username='staff-user', password='testpass123', is_staff=True
-        )
-        client = APIClient()
-        client.force_authenticate(user=staff)
-
-        response = client.post('/api/categories/', {'name': 'New Category'}, format='json')
-        self.assertEqual(response.status_code, 201)
-
 
 class RoleLockdownTests(TestCase):
-    """Bodega/despacho are not staff (is_staff=False) and cannot write."""
+    """Bodega/despacho roles are denied product and category writes."""
 
     def setUp(self):
         self.category = Category.objects.create(name='Test Category')
@@ -111,4 +131,8 @@ class RoleLockdownTests(TestCase):
 
     def test_bodega_category_write_rejected(self):
         response = self._role_client('bodega').post('/api/categories/', {'name': 'New Category'}, format='json')
+        self.assertEqual(response.status_code, 403)
+
+    def test_despacho_category_write_rejected(self):
+        response = self._role_client('despacho').post('/api/categories/', {'name': 'New Category'}, format='json')
         self.assertEqual(response.status_code, 403)
