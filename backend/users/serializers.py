@@ -55,6 +55,16 @@ class UserRoleUpdateSerializer(serializers.Serializer):
         return user
 
 
+class StaffUserListSerializer(serializers.ModelSerializer):
+    """Admin-only staff list projection; exact fields only, no extra PII."""
+
+    role = serializers.CharField(source='profile.role', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'is_staff', 'role']
+
+
 class StaffUserSerializer(serializers.Serializer):
     """Admin-only staff-user creation; role is restricted to staff roles."""
 

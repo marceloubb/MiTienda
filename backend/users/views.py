@@ -14,9 +14,10 @@ from .serializers import (
     UpdateProfileSerializer,
     UserRoleUpdateSerializer,
     StaffUserSerializer,
+    StaffUserListSerializer,
 )
 from .models import UserProfile
-from .permissions import IsAdmin
+from .permissions import IsAdmin, STAFF_ROLES
 
 
 class RegisterView(APIView):
@@ -172,10 +173,15 @@ class UserDetailView(APIView):
         return Response(UserSerializer(user).data)
 
 
-class StaffUserCreateView(APIView):
-    """Admin-only staff-user creation at /api/staff/users/."""
+class StaffUserView(APIView):
+    """Admin-only staff-user list and creation at /api/staff/users/."""
 
     permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        users = User.objects.filter(profile__role__in=STAFF_ROLES).order_by('id')
+        serializer = StaffUserListSerializer(users, many=True)
+        return Response(serializer.data)
 
     def post(self, request):
         serializer = StaffUserSerializer(data=request.data)
