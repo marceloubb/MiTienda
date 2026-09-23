@@ -52,7 +52,7 @@ export default function ProfilePage() {
 }
 
 function ProfileContent({ user }: { user: UserType }) {
-  const { token, refreshProfile } = useAuth();
+  const { refreshProfile } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState(() => ({
     first_name: user.first_name || "",
@@ -70,11 +70,10 @@ function ProfileContent({ user }: { user: UserType }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
 
     setIsSaving(true);
     try {
-      await updateProfile(token, formData);
+      await updateProfile(formData);
       await refreshProfile();
       sileo.success({
         title: "Perfil actualizado",

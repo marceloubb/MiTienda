@@ -10,7 +10,6 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { sileo } from "sileo";
-import { useAuth } from "@/lib/auth-context";
 import { advanceOrder, getStaffOrders, type Order, type OrderStatus } from "@/lib/api";
 import { OrderStatusBadge, STATUS_FALLBACK_LABELS } from "@/lib/order-status";
 import { Button } from "@/components/ui/button";
@@ -74,7 +73,6 @@ function formatDate(value: string): string {
 }
 
 export default function DispatchRoutesView() {
-  const { token } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,9 +81,8 @@ export default function DispatchRoutesView() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!token) return;
 
-    getStaffOrders(token)
+    getStaffOrders()
       .then((data) => {
         if (!cancelled) {
           setOrders(data.filter((order) => DESPACHO_STATUSES.includes(order.status)));
@@ -106,20 +103,19 @@ export default function DispatchRoutesView() {
     return () => {
       cancelled = true;
     };
-  }, [token, reloadKey]);
+  }, [reloadKey]);
 
   function refresh() {
     setReloadKey((key) => key + 1);
   }
 
   async function handleAdvance(order: Order) {
-    if (!token) return;
     const next = NEXT_STATUS[order.status];
     if (!next) return;
 
     setPendingIds((ids) => new Set(ids).add(order.id));
     try {
-      const updated = await advanceOrder(token, order.id, next);
+      const updated = await advanceOrder(order.id, next);
       sileo.success({
         title: "Pedido avanzado",
         description: `El pedido #${updated.id} pasó a "${updated.status_display}".`,

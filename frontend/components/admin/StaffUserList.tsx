@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, RotateCcw, Users } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
 import { listStaffUsers, type StaffUser } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +28,6 @@ interface StaffUserListProps {
 // endpoint llega en el slice 2 del cambio admin-ux-reorganization; hasta
 // entonces esta lista tolera su ausencia con el estado de error.
 export default function StaffUserList({ reloadKey = 0 }: StaffUserListProps) {
-  const { token } = useAuth();
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +35,8 @@ export default function StaffUserList({ reloadKey = 0 }: StaffUserListProps) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!token) return;
 
-    listStaffUsers(token)
+    listStaffUsers()
       .then((data) => {
         if (!cancelled) {
           setUsers(data);
@@ -62,7 +59,7 @@ export default function StaffUserList({ reloadKey = 0 }: StaffUserListProps) {
     return () => {
       cancelled = true;
     };
-  }, [token, reloadKey, retryKey]);
+  }, [reloadKey, retryKey]);
 
   function refresh() {
     setRetryKey((key) => key + 1);

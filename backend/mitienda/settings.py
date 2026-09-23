@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_otp',
     'django_otp.plugins.otp_totp',
+    'whitenoise.runserver_nostatic',
     # Apps del proyecto
     'products',
     'orders',
@@ -80,6 +81,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'mitienda.middleware.AdminIPAllowlistMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -171,6 +173,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 
 # Email
@@ -195,8 +207,11 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    # IP-scoped: the cookie authenticator makes DRF's default per-user-pk
+    # throttle useless on register (each new account gets a new pk and with it
+    # a fresh ident), so these anti-abuse scopes key on the client IP instead.
     'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.ScopedRateThrottle',
+        'users.throttling.IpScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'register': '5/hour',
@@ -206,13 +221,29 @@ REST_FRAMEWORK = {
 }
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-]
+# The SPA (http://localhost:3000) calls the API (http://localhost:8000)
+# cross-origin but SAME-SITE — the port does not change the site — so
+# SameSite=Lax cookies (TOKEN_COOKIE_* below) are sent on those fetches. Lax
+# blocks cross-site POSTs, which is the CSRF defense for this design; the auth
+# token travels in the httpOnly cookie, never in localStorage. When the
+# frontend moves to a different registrable domain this must be revisited
+# (SameSite=None + Secure + a CSRF token); see docs/DEPLOYMENT.md.
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    'DJANGO_CORS_ALLOWED_ORIGINS',
+    'http://localhost:3000,http://127.0.0.1:3000',
+).split(',')
+CORS_ALLOW_CREDENTIALS = True
 
-# Reject cross-origin credentialed requests (H9); token-header requests stay functional.
-CORS_ALLOW_CREDENTIALS = False
+# Auth token cookie (security hardening): the DRF token is handed to the SPA
+# as an httpOnly cookie so browser-side XSS cannot read it. The cookie is set
+# on login/register/refresh, rotated on every refresh, and cleared on logout.
+TOKEN_COOKIE_NAME = os.environ.get('DJANGO_TOKEN_COOKIE_NAME', 'auth_token')
+# Lifetime in seconds; matches DJANGO_TOKEN_TTL_HOURS (24h) by default.
+TOKEN_COOKIE_AGE = int(os.environ.get('DJANGO_TOKEN_COOKIE_AGE', '86400'))
+# Lax = same-site fetches only; cross-site POSTs are blocked (CSRF defense).
+TOKEN_COOKIE_SAMESITE = os.environ.get('DJANGO_TOKEN_COOKIE_SAMESITE', 'Lax')
+# Follows the DJANGO_SECURE_MODE gate: Secure is only set over HTTPS.
+TOKEN_COOKIE_SECURE = _env_bool('DJANGO_SECURE_MODE')
 
 # Env-gated secure settings block (H9): off by default for development.
 if _env_bool('DJANGO_SECURE_MODE'):

@@ -56,7 +56,7 @@ export default function RegisterPage() {
         first_name: formData.first_name,
         last_name: formData.last_name,
       });
-      login(data.token, data.user);
+      login(data.user);
       router.push("/");
     } catch {
       setError("Error al registrar. Verifica los datos ingresados.");

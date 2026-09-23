@@ -101,9 +101,14 @@ class SecureModeTests(TestCase):
         self.assertFalse(hasattr(mitienda.settings, 'SECURE_HSTS_SECONDS'))
         self.assertFalse(hasattr(mitienda.settings, 'SECURE_PROXY_SSL_HEADER'))
 
-    def test_cors_credentials_disabled(self):
+    def test_cors_credentials_enabled_with_explicit_origins(self):
+        # The cookie auth design requires credentials AND an explicit origin
+        # allowlist: a wildcard CORS origin would let any site send the
+        # SameSite=Lax cookie-bearing requests cross-origin.
         from django.conf import settings
-        self.assertFalse(settings.CORS_ALLOW_CREDENTIALS)
+        self.assertTrue(settings.CORS_ALLOW_CREDENTIALS)
+        self.assertNotIn('*', settings.CORS_ALLOWED_ORIGINS)
+        self.assertIn('http://localhost:3000', settings.CORS_ALLOWED_ORIGINS)
 
     def tearDown(self):
         # Restore the settings module to a healthy state after reloads.

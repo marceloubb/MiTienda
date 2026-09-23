@@ -27,7 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { sileo } from "sileo";
 
 export default function CartPage() {
-  const { user, token, cart, updateCart, isLoading } = useAuth();
+  const { user, cart, updateCart, isLoading } = useAuth();
   const router = useRouter();
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -55,10 +55,10 @@ export default function CartPage() {
   }
 
   async function handleUpdateQuantity(productId: number, newQuantity: number) {
-    if (!token || newQuantity < 1) return;
+    if (newQuantity < 1) return;
     setPendingId(productId);
     try {
-      const updatedCart = await updateCartItem(token, productId, newQuantity);
+      const updatedCart = await updateCartItem(productId, newQuantity);
       updateCart(updatedCart);
     } catch {
       sileo.error({
@@ -71,10 +71,9 @@ export default function CartPage() {
   }
 
   async function handleRemoveItem(productId: number, name: string) {
-    if (!token) return;
     setPendingId(productId);
     try {
-      const updatedCart = await removeFromCart(token, productId);
+      const updatedCart = await removeFromCart(productId);
       updateCart(updatedCart);
       sileo.success({
         title: "Producto eliminado",
@@ -91,9 +90,8 @@ export default function CartPage() {
   }
 
   async function handleClearCart() {
-    if (!token) return;
     try {
-      const updatedCart = await clearCart(token);
+      const updatedCart = await clearCart();
       updateCart(updatedCart);
       sileo.success({
         title: "Carrito vaciado",

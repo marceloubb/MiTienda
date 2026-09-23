@@ -27,7 +27,7 @@ export default function LoginPage() {
 
     try {
       const data = await apiLogin(username, password);
-      login(data.token, data.user);
+      login(data.user);
       router.push("/");
     } catch {
       setError(

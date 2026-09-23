@@ -900,6 +900,113 @@ class RefreshTokenTests(TestCase):
         self.assertEqual(response.status_code, 401)
 
 
+class TokenCookieTests(TestCase):
+    """Session cookie (security hardening): set on login/register/refresh,
+    rotated on refresh, cleared on logout; authenticates without a header."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='cookieuser', password='testpass123')
+        self.client = APIClient()
+
+    def test_login_sets_http_only_samesite_lax_cookie(self):
+        response = self.client.post('/api/users/login/', {
+            'username': 'cookieuser', 'password': 'testpass123',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        cookie = response.cookies['auth_token']
+        self.assertEqual(cookie.value, response.data['token'])
+        # The whole point of the change: JavaScript must never read it, and
+        # Lax blocks cross-site POSTs (the CSRF defense for this design).
+        # Django's SimpleCookie exposes httponly as a boolean attribute.
+        self.assertTrue(cookie['httponly'])
+        self.assertEqual(cookie['samesite'], 'Lax')
+        self.assertEqual(cookie['path'], '/')
+
+    def test_register_sets_cookie(self):
+        response = self.client.post('/api/users/register/', {
+            'username': 'cookiebaby', 'email': 'cookie@example.com',
+            'password': 'Tr0ub4dor&3',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        cookie = response.cookies['auth_token']
+        self.assertEqual(cookie.value, response.data['token'])
+        self.assertTrue(cookie['httponly'])
+        self.assertEqual(cookie['samesite'], 'Lax')
+
+    def test_refresh_rotates_cookie_value(self):
+        old = Token.objects.create(user=self.user)
+
+        response = self.client.post(
+            '/api/users/token/refresh/', HTTP_AUTHORIZATION=f'Token {old.key}'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        new_key = response.data['token']
+        self.assertNotEqual(new_key, old.key)
+        self.assertEqual(response.cookies['auth_token'].value, new_key)
+        # Rotation invalidates the old token server-side.
+        self.assertFalse(Token.objects.filter(key=old.key).exists())
+
+    def test_refresh_authenticates_via_cookie_and_rotates(self):
+        old = Token.objects.create(user=self.user)
+        client = APIClient()
+        client.cookies['auth_token'] = old.key
+
+        response = client.post('/api/users/token/refresh/')
+
+        self.assertEqual(response.status_code, 200)
+        new_key = response.data['token']
+        self.assertNotEqual(new_key, old.key)
+        # The test client's cookie jar picked up the rotated cookie.
+        self.assertEqual(client.cookies['auth_token'].value, new_key)
+        self.assertFalse(Token.objects.filter(key=old.key).exists())
+
+    def test_logout_clears_cookie(self):
+        token = Token.objects.create(user=self.user)
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        response = client.post('/api/users/logout/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Token.objects.filter(key=token.key).exists())
+        cookie = response.cookies['auth_token']
+        self.assertEqual(cookie.value, '')
+        self.assertEqual(cookie['max-age'], 0)
+
+    def test_logout_with_cookie_clears_it(self):
+        token = Token.objects.create(user=self.user)
+        client = APIClient()
+        client.cookies['auth_token'] = token.key
+
+        response = client.post('/api/users/logout/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Token.objects.filter(key=token.key).exists())
+        self.assertEqual(response.cookies['auth_token'].value, '')
+
+    def test_request_with_cookie_authenticates_without_header(self):
+        token = Token.objects.create(user=self.user)
+        client = APIClient()
+        client.cookies['auth_token'] = token.key
+
+        response = client.get('/api/users/profile/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['username'], 'cookieuser')
+
+    def test_expired_cookie_token_rejected(self):
+        key = _age_token(Token.objects.create(user=self.user), 25)
+        client = APIClient()
+        client.cookies['auth_token'] = key
+
+        response = client.get('/api/users/profile/')
+
+        self.assertEqual(response.status_code, 401)
+
+
 class ScopedLogoutTests(TestCase):
     """H3 - logout deletes only the presented token, never another user's.
 

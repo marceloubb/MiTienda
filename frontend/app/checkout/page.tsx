@@ -118,7 +118,7 @@ function CheckoutForm({
   cart: Cart;
   onOrderComplete: (orderId: number) => void;
 }) {
-  const { token, updateCart } = useAuth();
+  const { updateCart } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState(() => ({
     shipping_name: `${user.first_name} ${user.last_name}`.trim(),
@@ -138,11 +138,10 @@ function CheckoutForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
 
     setIsProcessing(true);
     try {
-      const order = await createOrderFromCart(token, formData);
+      const order = await createOrderFromCart(formData);
       updateCart({ ...cart, items: [], total: "0", total_items: 0 });
       onOrderComplete(order.id);
     } catch {

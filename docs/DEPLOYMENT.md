@@ -77,3 +77,48 @@ Rollback: point `DATABASE_URL` back to unset (SQLite) or to the previous value; 
 - The nonce CSP, `frame-ancestors 'none'`, and the per-request nonce come from `frontend/proxy.ts`; nosniff, Referrer-Policy, Permissions-Policy, `X-Frame-Options: DENY`, and `poweredByHeader: false` come from `frontend/next.config.ts`.
 - Nonce-based CSP requires dynamic rendering (`export const dynamic = 'force-dynamic'` in `frontend/app/layout.tsx`): every page renders per request, so static/edge caching does not apply. CDN caching of HTML is not possible; cache `/_next/static/*` normally since it is excluded from the CSP proxy matcher.
 - Verify after deploy: responses carry a `Content-Security-Policy` with a nonce and no `'unsafe-inline'` in `script-src`, `frame-ancestors 'none'`, and **no** `X-Powered-By` header.
+
+## Docker deployment (local)
+
+Run the full stack (PostgreSQL, Django/DRF backend, Next.js frontend) locally with Docker Compose:
+
+1. Create a root `.env` file from `.env.example` and fill in real values: `DJANGO_SECRET_KEY` (long random string) and `POSTGRES_PASSWORD`. The `.env` file is gitignored.
+2. Build and start:
+
+   ```powershell
+   docker compose up --build
+   ```
+
+3. Services after startup:
+
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000/api (`/api/products/` is public read-only)
+   - Django admin: http://localhost:8000/admin/
+   - PostgreSQL: internal to the Compose network (no host port published); data lives in the `pgdata` named volume
+
+Notes:
+
+- The backend container runs `manage.py migrate` and `manage.py collectstatic` on start, so migrations apply automatically and the Django admin static assets are served (WhiteNoise).
+- `DJANGO_SECURE_MODE` stays `False` in this local Docker stack: everything runs over plain HTTP. TLS termination is still a separate production concern — enable `DJANGO_SECURE_MODE` only after HTTPS is verified, per the enablement order above.
+- The frontend image builds with `NEXT_PUBLIC_API_URL=http://localhost:8000/api` (a build-time variable inlined by Next.js). The browser calls the backend API directly, which matches the CORS allowlist and the CSP `connect-src` from `frontend/proxy.ts`.
+- Stop with `docker compose down`; add `-v` to also delete the PostgreSQL named volume (destroys all data).
+
+### Session cookie (security hardening)
+
+The DRF token now travels in an httpOnly SameSite=Lax cookie (`auth_token` by default) set by the backend on login/register/refresh responses and cleared on logout. The SPA JavaScript never persists the token string client-side, so an XSS cannot steal it at rest. Tune with:
+
+| Variable | Default (dev) | Production value | Purpose |
+|---|---|---|---|
+| `DJANGO_CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | comma-separated browser-visible origins | CORS allowlist for the SPA origin. `CORS_ALLOW_CREDENTIALS` is always on, so every allowlisted origin must be intentional. Adding an origin here increases the cookie's exposure surface. |
+| `DJANGO_TOKEN_COOKIE_NAME` | `auth_token` | `auth_token` | Token cookie name; change only if it collides with another cookie on the API host. |
+| `DJANGO_TOKEN_COOKIE_AGE` | `86400` | `86400` (or lower) | Token cookie lifetime in seconds. Keep it aligned with `DJANGO_TOKEN_TTL_HOURS`. |
+| `DJANGO_TOKEN_COOKIE_SAMESITE` | `Lax` | `Lax` | SameSite policy. `Lax` blocks cross-site POSTs while still sending the cookie on same-site fetches — the dev stack runs the SPA and API on different ports but the same site, so it works over plain HTTP. |
+| `DJANGO_SECURE_MODE` | `False` | `True` (after TLS) | Also flags the token cookie `Secure`; without HTTPS, browsers reject `Secure` cookies. |
+
+Notes:
+
+- **Do not lower SameSite below `Lax`** (e.g. to `None`) unless the SPA and API are genuinely cross-site — that would require the cookie `Secure` flag and TLS everywhere.
+- **Browse via `localhost`, not `127.0.0.1`**: the cookie is same-site only when the SPA page and the API share a host. The SPA defaults to `http://localhost:3000` + `http://localhost:8000/api` (same host `localhost`, different ports — same site). A page served at `http://127.0.0.1:3000` calling `http://localhost:8000` is **cross-site** (different hosts), so the Lax cookie is never attached and authenticated calls will 401. To use `127.0.0.1`, point `NEXT_PUBLIC_API_URL` at `http://127.0.0.1:8000/api` as well.
+- The `Authorization: Token` header remains supported as a fallback for non-browser clients (scripts, API tools); browser sessions use the cookie.
+- Verify after deploy: login/register responses carry `Set-Cookie: auth_token=...; HttpOnly; SameSite=Lax` (plus `Secure` in production) and logout clears it (`Max-Age=0`).
+- **Rate limits are best-effort under multi-worker Gunicorn**: DRF throttling counts in `CACHES['default']`, which is `LocMemCache` (in-process). The container runs Gunicorn with `--workers 2`, so each worker keeps its own counter and a client spread across workers can exceed the per-scope rate (e.g. `register: 5/hour`) without tripping the 429. The unit tests exercise a single process and cover the throttles correctly; the limit is enforced strictly only with one worker or a shared cache (DatabaseCache/Redis). Deployments that need hard rate limits should switch to a shared cache backend.

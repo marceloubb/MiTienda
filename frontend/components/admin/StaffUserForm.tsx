@@ -3,7 +3,6 @@
 import { useState, type FormEvent } from "react";
 import { Loader2, UserPlus } from "lucide-react";
 import { sileo } from "sileo";
-import { useAuth } from "@/lib/auth-context";
 import { createStaffUser, APIError, type UserRole } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +41,6 @@ interface StaffUserFormProps {
 }
 
 export default function StaffUserForm({ onCreated }: StaffUserFormProps) {
-  const { token } = useAuth();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,12 +50,11 @@ export default function StaffUserForm({ onCreated }: StaffUserFormProps) {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!token) return;
 
     setError(null);
     setIsSubmitting(true);
     try {
-      const user = await createStaffUser(token, { username, email, password, role });
+      const user = await createStaffUser({ username, email, password, role });
       sileo.success({
         title: "Usuario creado",
         description: `"${user.username}" se creó con el rol ${ROLE_LABELS[role]}.`,
@@ -175,7 +172,7 @@ export default function StaffUserForm({ onCreated }: StaffUserFormProps) {
             </p>
           )}
 
-          <Button type="submit" disabled={isSubmitting || !token} className="w-full">
+          <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting && <Loader2 className="animate-spin" />}
             {isSubmitting ? "Creando…" : "Crear usuario"}
           </Button>

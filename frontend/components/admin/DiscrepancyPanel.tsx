@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Ban, CheckCircle2, Loader2, RotateCcw } from "lucide-react";
 import { sileo } from "sileo";
-import { useAuth } from "@/lib/auth-context";
 import { cancelOrder, getStaffOrders, resolveDiscrepancy, type Order } from "@/lib/api";
 import { OrderStatusBadge } from "@/lib/order-status";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,6 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 export default function DiscrepancyPanel() {
-  const { token } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,9 +25,8 @@ export default function DiscrepancyPanel() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!token) return;
 
-    getStaffOrders(token)
+    getStaffOrders()
       .then((data) => {
         if (!cancelled) {
           setOrders(data.filter((order) => order.status === "discrepancy"));
@@ -48,14 +45,13 @@ export default function DiscrepancyPanel() {
     return () => {
       cancelled = true;
     };
-  }, [token, reloadKey]);
+  }, [reloadKey]);
 
   function refresh() {
     setReloadKey((key) => key + 1);
   }
 
   function runAction(order: Order, action: () => Promise<Order>, successTitle: string) {
-    if (!token) return;
     setPendingIds((ids) => new Set(ids).add(order.id));
     action()
       .then((updated) => {
@@ -80,13 +76,11 @@ export default function DiscrepancyPanel() {
   }
 
   function handleResolve(order: Order) {
-    if (!token) return;
-    runAction(order, () => resolveDiscrepancy(token, order.id), "Discrepancia resuelta");
+    runAction(order, () => resolveDiscrepancy(order.id), "Discrepancia resuelta");
   }
 
   function handleCancel(order: Order) {
-    if (!token) return;
-    runAction(order, () => cancelOrder(token, order.id), "Pedido cancelado");
+    runAction(order, () => cancelOrder(order.id), "Pedido cancelado");
   }
 
   if (isLoading) {

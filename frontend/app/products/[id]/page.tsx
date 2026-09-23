@@ -26,7 +26,7 @@ import { sileo } from "sileo";
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { token, updateCart } = useAuth();
+  const { user, updateCart } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,7 +85,7 @@ export default function ProductDetailPage() {
   async function handleAddToCart() {
     if (!product) return;
 
-    if (!token) {
+    if (!user) {
       sileo.info({
         title: "Inicia sesión",
         description: "Necesitas una cuenta para agregar productos al carrito.",
@@ -96,7 +96,7 @@ export default function ProductDetailPage() {
 
     setIsAdding(true);
     try {
-      const cart = await addToCart(token, product.id, quantity);
+      const cart = await addToCart(product.id, quantity);
       updateCart(cart);
       sileo.success({
         title: "Agregado al carrito",

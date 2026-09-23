@@ -2,14 +2,13 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Cart, UserRole, APIError } from '@/lib/api';
-import { getProfile, getCart, onTokenChange, setActiveToken } from '@/lib/api';
+import { getProfile, getCart, logout as apiLogout, onTokenChange } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   cart: Cart | null;
   isLoading: boolean;
-  login: (token: string, user: User) => void;
+  login: (user: User) => void;
   logout: () => void;
   updateCart: (cart: Cart) => void;
   refreshProfile: () => Promise<void>;
@@ -17,22 +16,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function getInitialToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('token');
-}
-
+// The auth token lives in an httpOnly cookie that JavaScript cannot read, so
+// there is nothing to persist client-side and no token string in this state.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(getInitialToken);
   const [cart, setCart] = useState<Cart | null>(null);
-  const [isLoading, setIsLoading] = useState(() => getInitialToken() !== null);
+  // Always start "loading" and probe the session once on mount: getProfile()
+  // succeeds when a valid cookie exists (restoring the session after a page
+  // reload) and 401s when there is none (anonymous).
+  const [isLoading, setIsLoading] = useState(true);
 
-  const loadProfile = useCallback(async (authToken: string) => {
+  const loadProfile = useCallback(async () => {
     try {
-      const userData = await getProfile(authToken);
+      const userData = await getProfile();
       setUser(userData);
-      const cartData = await getCart(authToken);
+      const cartData = await getCart();
       setCart({
         ...cartData,
         items: cartData.items || [],
@@ -40,45 +38,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         total_items: cartData.total_items || 0,
       });
     } catch (error) {
-      // F3: clear the session only on genuine auth failures (401/403, or a
-      // refresh failure already handled by api.ts). Transient 5xx and network
-      // errors must NOT log the user out.
+      // 401/403: no valid session (or a refresh failure already handled by
+      // api.ts) — anonymous. Transient 5xx and network errors leave the user
+      // anonymous for this mount instead of blocking the whole app.
       const status = error instanceof APIError ? error.status : undefined;
       if (status === 401 || status === 403) {
-        setActiveToken(null);
+        setUser(null);
+        setCart(null);
       }
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Keep localStorage and app state in sync with the API client: refresh
-  // rotation and refresh-failure clearing both land here, and login/logout
-  // push changes back through setActiveToken.
+  // Attempt to restore the session on mount; the backend cookie authenticates
+  // the request.
   useEffect(() => {
-    return onTokenChange((nextToken) => {
-      if (nextToken) {
-        localStorage.setItem('token', nextToken);
-        setToken(nextToken);
-      } else {
-        localStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
-        setCart(null);
-      }
+    void loadProfile();
+  }, [loadProfile]);
+
+  // Refresh-failure path: api.ts signals an unrecoverable session, so clear
+  // the client state. The cookie itself is out of reach and expires naturally.
+  useEffect(() => {
+    return onTokenChange(() => {
+      setUser(null);
+      setCart(null);
     });
   }, []);
 
-  useEffect(() => {
-    if (token) {
-      void loadProfile(token);
-    }
-  }, [token, loadProfile]);
-
-  function login(newToken: string, userData: User) {
-    setActiveToken(newToken); // persists + updates state via the token-change hook
+  function login(userData: User) {
+    // The backend already set the httpOnly cookie in the login/register
+    // response; here we only restore the client state.
     setUser(userData);
-    getCart(newToken).then((cartData) =>
+    getCart().then((cartData) =>
       setCart({
         ...cartData,
         items: cartData.items || [],
@@ -89,11 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function logout() {
-    localStorage.removeItem('token');
-    setToken(null);
+    // Best-effort server-side teardown: deletes the server token and clears
+    // the cookie via Set-Cookie. Client state clears regardless; if the API
+    // is unreachable the cookie expires naturally (or the next refresh 401s).
+    void apiLogout().catch(() => {});
     setUser(null);
     setCart(null);
-    setActiveToken(null); // keep the API client's active token in sync
   }
 
   function updateCart(cartData: Cart) {
@@ -106,15 +99,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function refreshProfile() {
-    if (token) {
-      const userData = await getProfile(token);
-      setUser(userData);
-    }
+    const userData = await getProfile();
+    setUser(userData);
   }
 
   return (
     <AuthContext.Provider
-      value={{ user, token, cart, isLoading, login, logout, updateCart, refreshProfile }}
+      value={{ user, cart, isLoading, login, logout, updateCart, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>

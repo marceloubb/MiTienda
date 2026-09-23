@@ -1,8 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
-interface FetchOptions extends RequestInit {
-  token?: string;
-}
+type FetchOptions = RequestInit;
 
 // Error de API con detalle estructurado. `fields` contiene los errores por
 // campo del backend (DRF 400), p. ej. { username: ["Ya existe."] }.
@@ -23,20 +21,32 @@ function formatFieldMessage(fields: Record<string, string[]>): string {
   return parts.join(' · ') || 'Error en la petición';
 }
 
-// --- Token lifecycle (H3, F1, F3) -------------------------------------------
+// --- Session lifecycle (security hardening) --------------------------------
 //
-// The API client owns the single retry-on-401 policy: one refresh attempt,
-// then one retry of the original request. When the refresh fails, the token is
-// cleared through the change hook below, which logs the user out.
+// The DRF token lives in an httpOnly SameSite=Lax cookie set by the backend
+// (login/register/refresh responses) and cleared on logout; the SPA never
+// persists the token string client-side, so an XSS cannot steal it at rest.
+// (The login/register/refresh responses still carry the token in the JSON body
+// for non-browser header clients; the browser path only reads the responses'
+// Set-Cookie.) The frontend calls the API cross-origin in dev (localhost:3000
+// -> localhost:8000) but that is SAME-SITE — the port does not change the
+// site — so Lax cookies are sent on those fetches and received back. Every
+// request therefore uses `credentials: 'include'`; the Authorization header is
+// kept only as a fallback for non-browser clients.
+//
+// The API client owns the single retry-on-401 policy: one refresh attempt
+// (also cookie-authenticated), then one retry of the original request. When
+// the refresh fails the session is unrecoverable, and the change hook below
+// clears the client state (the cookie itself expires or 401s on its own).
 
-type TokenChangeHandler = (token: string | null) => void;
+type TokenChangeHandler = () => void;
 
 let tokenChangeHandler: TokenChangeHandler | null = null;
 
 /**
- * Register a handler called whenever the API client's active token changes
- * (rotation on refresh, clearing on refresh failure). Returns an unregister
- * function for effect cleanup.
+ * Register a handler called when the API client's session becomes
+ * unrecoverable (refresh failure). Returns an unregister function for
+ * effect cleanup.
  */
 export function onTokenChange(handler: TokenChangeHandler): () => void {
   tokenChangeHandler = handler;
@@ -45,36 +55,44 @@ export function onTokenChange(handler: TokenChangeHandler): () => void {
   };
 }
 
-/** Propagate token changes from the application into the API client. */
-export function setActiveToken(token: string | null): void {
-  tokenChangeHandler?.(token);
+/** Signal the app that the session ended (refresh failure). */
+export function setActiveToken(): void {
+  tokenChangeHandler?.();
 }
 
-// Endpoints authenticated by credentials rather than a token must never be
-// auto-refreshed: a 401 there means bad credentials, not an expired token.
-const NON_RETRYABLE_ENDPOINTS = ['/users/login/', '/users/register/', '/users/token/refresh/'];
+// Credential endpoints must never be auto-refreshed: a 401 there means bad
+// credentials (or an invalid refresh token / active logout), not an expired
+// session. Logout with an already-expired session is still fine: the server
+// token is gone either way and the cookie clears on the next Set-Cookie.
+const NON_RETRYABLE_ENDPOINTS = [
+  '/users/login/',
+  '/users/register/',
+  '/users/token/refresh/',
+  '/users/logout/',
+];
 
 // A burst of parallel 401s (e.g. profile + cart) shares one in-flight refresh:
 // the backend rotates the token on every refresh, so concurrent refreshes would
-// invalidate each other. Every waiting request retries once with the new token.
-let refreshInFlight: Promise<string | null> | null = null;
+// invalidate each other. Every waiting request retries once with the cookie the
+// rotated Set-Cookie response installed.
+let refreshInFlight: Promise<boolean> | null = null;
 
-async function refreshToken(token: string): Promise<string | null> {
+async function refreshToken(): Promise<boolean> {
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
+        // No Authorization header: the httpOnly cookie authenticates this
+        // request, and the backend sets the rotated cookie on the response.
         const response = await fetch(`${API_URL}/users/token/refresh/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Token ${token}`,
           },
+          credentials: 'include',
         });
-        if (!response.ok) return null;
-        const body = (await response.json()) as { token?: unknown };
-        return typeof body.token === 'string' ? body.token : null;
+        return response.ok;
       } catch {
-        return null;
+        return false;
       } finally {
         refreshInFlight = null;
       }
@@ -84,17 +102,15 @@ async function refreshToken(token: string): Promise<string | null> {
 }
 
 async function performFetch<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
-  const { token, ...fetchOptions } = options;
-
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Token ${token}` } : {}),
     ...options.headers,
   };
 
   const response = await fetch(`${API_URL}${endpoint}`, {
-    ...fetchOptions,
+    ...options,
     headers,
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -133,25 +149,23 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
   } catch (error) {
     const status = error instanceof APIError ? error.status : undefined;
     const canRetry =
-      status === 401 &&
-      options.token != null &&
-      !NON_RETRYABLE_ENDPOINTS.some((path) => endpoint.endsWith(path));
+      status === 401 && !NON_RETRYABLE_ENDPOINTS.some((path) => endpoint.endsWith(path));
 
-    if (!canRetry || options.token == null) throw error;
+    if (!canRetry) throw error;
 
-    const freshToken = await refreshToken(options.token);
-    if (!freshToken) {
-      // Refresh failed: the session is unrecoverable. Clear the token so
-      // listeners (auth-context) log the user out.
-      setActiveToken(null);
+    const refreshed = await refreshToken();
+    if (!refreshed) {
+      // Refresh failed: the session is unrecoverable. Notify listeners
+      // (auth-context) so they clear the user; the cookie is out of the
+      // browser's reach and expires naturally.
+      setActiveToken();
       throw error;
     }
 
-    setActiveToken(freshToken);
-
-    // Exactly one retry of the original request with the rotated token. A
-    // second 401/403 is surfaced to the caller unchanged.
-    return performFetch<T>(endpoint, { ...options, token: freshToken });
+    // Exactly one retry of the original request, now authenticated by the
+    // rotated cookie the refresh response installed. A second 401/403 is
+    // surfaced to the caller unchanged.
+    return performFetch<T>(endpoint, options);
   }
 }
 
@@ -210,130 +224,119 @@ export async function register(data: {
   });
 }
 
-export async function getProfile(token: string) {
-  return fetchAPI<User>('/users/profile/', { token });
+export async function logout() {
+  return fetchAPI<{ message: string }>('/users/logout/', {
+    method: 'POST',
+  });
 }
 
-export async function updateProfile(token: string, data: Partial<User>) {
+export async function getProfile() {
+  return fetchAPI<User>('/users/profile/');
+}
+
+export async function updateProfile(data: Partial<User>) {
   return fetchAPI<User>('/users/profile/', {
     method: 'PUT',
-    token,
     body: JSON.stringify(data),
   });
 }
 
 // Cart
-export async function getCart(token: string) {
-  return fetchAPI<Cart>('/cart/', { token });
+export async function getCart() {
+  return fetchAPI<Cart>('/cart/');
 }
 
-export async function addToCart(token: string, productId: number, quantity = 1) {
+export async function addToCart(productId: number, quantity = 1) {
   return fetchAPI<Cart>('/cart/add_item/', {
     method: 'POST',
-    token,
     body: JSON.stringify({ product_id: productId, quantity }),
   });
 }
 
-export async function removeFromCart(token: string, productId: number) {
+export async function removeFromCart(productId: number) {
   return fetchAPI<Cart>('/cart/remove_item/', {
     method: 'POST',
-    token,
     body: JSON.stringify({ product_id: productId }),
   });
 }
 
-export async function updateCartItem(token: string, productId: number, quantity: number) {
+export async function updateCartItem(productId: number, quantity: number) {
   return fetchAPI<Cart>('/cart/update_item/', {
     method: 'POST',
-    token,
     body: JSON.stringify({ product_id: productId, quantity }),
   });
 }
 
-export async function clearCart(token: string) {
+export async function clearCart() {
   return fetchAPI<Cart>('/cart/clear/', {
     method: 'POST',
-    token,
   });
 }
 
 // Orders
-export async function getOrders(token: string) {
-  return fetchAPI<Order[]>('/orders/', { token });
+export async function getOrders() {
+  return fetchAPI<Order[]>('/orders/');
 }
 
-export async function getOrder(token: string, id: number) {
-  return fetchAPI<Order>(`/orders/${id}/`, { token });
+export async function getOrder(id: number) {
+  return fetchAPI<Order>(`/orders/${id}/`);
 }
 
-export async function createOrderFromCart(
-  token: string,
-  data: {
-    shipping_name: string;
-    shipping_address: string;
-    shipping_city: string;
-    shipping_postal_code: string;
-    shipping_phone: string;
-    payment_method: string;
-    notes?: string;
-  }
-) {
+export async function createOrderFromCart(data: {
+  shipping_name: string;
+  shipping_address: string;
+  shipping_city: string;
+  shipping_postal_code: string;
+  shipping_phone: string;
+  payment_method: string;
+  notes?: string;
+}) {
   return fetchAPI<Order>('/orders/create_from_cart/', {
     method: 'POST',
-    token,
     body: JSON.stringify(data),
   });
 }
 
 // Staff orders (roles: admin, bodega, despacho — enforced server-side via DRF)
-export async function getStaffOrders(token: string) {
-  return fetchAPI<Order[]>('/staff/orders/', { token });
+export async function getStaffOrders() {
+  return fetchAPI<Order[]>('/staff/orders/');
 }
 
-export async function advanceOrder(token: string, id: number, toStatus?: OrderStatus) {
+export async function advanceOrder(id: number, toStatus?: OrderStatus) {
   return fetchAPI<Order>(`/staff/orders/${id}/advance/`, {
     method: 'POST',
-    token,
     ...(toStatus ? { body: JSON.stringify({ to_status: toStatus }) } : {}),
   });
 }
 
-export async function cancelOrder(token: string, id: number) {
+export async function cancelOrder(id: number) {
   return fetchAPI<Order>(`/staff/orders/${id}/cancel/`, {
     method: 'POST',
-    token,
   });
 }
 
-export async function flagDiscrepancy(token: string, id: number, reason: DiscrepancyReason) {
+export async function flagDiscrepancy(id: number, reason: DiscrepancyReason) {
   return fetchAPI<Order>(`/staff/orders/${id}/discrepancy/`, {
     method: 'POST',
-    token,
     body: JSON.stringify({ reason }),
   });
 }
 
-export async function resolveDiscrepancy(token: string, id: number) {
+export async function resolveDiscrepancy(id: number) {
   return fetchAPI<Order>(`/staff/orders/${id}/resolve-discrepancy/`, {
     method: 'POST',
-    token,
   });
 }
 
 // Staff users (admin only)
-export async function createStaffUser(
-  token: string,
-  data: {
-    username: string;
-    email: string;
-    password: string;
-    role: Exclude<UserRole, 'customer'>;
-  }
-) {
+export async function createStaffUser(data: {
+  username: string;
+  email: string;
+  password: string;
+  role: Exclude<UserRole, 'customer'>;
+}) {
   return fetchAPI<User>('/staff/users/', {
     method: 'POST',
-    token,
     body: JSON.stringify(data),
   });
 }
@@ -341,8 +344,8 @@ export async function createStaffUser(
 // Staff users list (admin only). El GET llega en el slice 2 del cambio
 // admin-ux-reorganization; hasta entonces el resumen lo tolera con su estado
 // de error.
-export async function listStaffUsers(token: string) {
-  return fetchAPI<StaffUser[]>('/staff/users/', { token });
+export async function listStaffUsers() {
+  return fetchAPI<StaffUser[]>('/staff/users/');
 }
 
 // Types

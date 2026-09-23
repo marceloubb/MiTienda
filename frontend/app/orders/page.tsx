@@ -48,7 +48,7 @@ function paymentMethodLabel(value: string): string {
 }
 
 export default function OrdersPage() {
-  const { user, token, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -57,14 +57,14 @@ export default function OrdersPage() {
     }
   }, [user, isAuthLoading, router]);
 
-  if (isAuthLoading || !user || !token) {
+  if (isAuthLoading || !user) {
     return <OrdersSkeleton />;
   }
 
-  return <OrdersContent token={token} />;
+  return <OrdersContent />;
 }
 
-function OrdersContent({ token }: { token: string }) {
+function OrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +73,7 @@ function OrdersContent({ token }: { token: string }) {
   useEffect(() => {
     let cancelled = false;
 
-    getOrders(token)
+    getOrders()
       .then((data) => {
         if (!cancelled) {
           setOrders(data);
@@ -98,7 +98,7 @@ function OrdersContent({ token }: { token: string }) {
     return () => {
       cancelled = true;
     };
-  }, [token, reloadKey]);
+  }, [reloadKey]);
 
   function handleRetry() {
     setIsLoading(true);

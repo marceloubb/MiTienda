@@ -12,7 +12,6 @@ import {
   X,
 } from "lucide-react";
 import { sileo } from "sileo";
-import { useAuth } from "@/lib/auth-context";
 import {
   advanceOrder,
   flagDiscrepancy,
@@ -83,7 +82,6 @@ export default function BodegaPage() {
 }
 
 function BodegaQueue() {
-  const { token } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,9 +91,8 @@ function BodegaQueue() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!token) return;
 
-    getStaffOrders(token)
+    getStaffOrders()
       .then((data) => {
         if (!cancelled) {
           setOrders(data.filter((order) => QUEUE_STATUSES.includes(order.status)));
@@ -116,20 +113,19 @@ function BodegaQueue() {
     return () => {
       cancelled = true;
     };
-  }, [token, reloadKey]);
+  }, [reloadKey]);
 
   function refresh() {
     setReloadKey((key) => key + 1);
   }
 
   async function handleAdvance(order: Order) {
-    if (!token) return;
     const next = NEXT_STATUS[order.status];
     if (!next) return;
 
     setPendingIds((ids) => new Set(ids).add(order.id));
     try {
-      const updated = await advanceOrder(token, order.id, next);
+      const updated = await advanceOrder(order.id, next);
       sileo.success({
         title: "Pedido avanzado",
         description: `El pedido #${updated.id} pasó a "${updated.status_display}".`,
@@ -148,11 +144,9 @@ function BodegaQueue() {
   }
 
   async function handleFlag(order: Order, reason: DiscrepancyReason) {
-    if (!token) return;
-
     setPendingIds((ids) => new Set(ids).add(order.id));
     try {
-      const updated = await flagDiscrepancy(token, order.id, reason);
+      const updated = await flagDiscrepancy(order.id, reason);
       sileo.success({
         title: "Discrepancia marcada",
         description: `El pedido #${updated.id} quedó bloqueado por "${REASON_LABELS[reason].toLowerCase()}".`,

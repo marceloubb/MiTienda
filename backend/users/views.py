@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
 from rest_framework.authtoken.models import Token
@@ -20,6 +21,43 @@ from .models import UserProfile
 from .permissions import IsAdmin, STAFF_ROLES
 
 
+def _set_token_cookie(response, token):
+    """Store the auth token in the httpOnly SameSite=Lax session cookie.
+
+    The SPA is served from http://localhost:3000 and calls the API at
+    http://localhost:8000: that is cross-origin but SAME-SITE, because the
+    port does not change the site. SameSite=Lax cookies are therefore sent on
+    those fetches, and Lax blocks cross-site POSTs, which is the CSRF defense
+    for this design. The token stays out of localStorage, so an XSS can never
+    read it; the cookie is only usable by the browser on same-site requests.
+    """
+    response.set_cookie(
+        settings.TOKEN_COOKIE_NAME,
+        token.key,
+        max_age=settings.TOKEN_COOKIE_AGE,
+        httponly=True,
+        samesite=settings.TOKEN_COOKIE_SAMESITE,
+        secure=settings.TOKEN_COOKIE_SECURE,
+        path='/',
+    )
+    return response
+
+
+def _delete_token_cookie(response):
+    """Clear the session cookie on the response (logout).
+
+    delete_cookie() only needs name/path (the browser matches cookies by
+    name+domain+path); it does not accept `secure` — the Secure/HttpOnly
+    flags are set at creation time and are not part of the cookie identity.
+    """
+    response.delete_cookie(
+        settings.TOKEN_COOKIE_NAME,
+        path='/',
+        samesite=settings.TOKEN_COOKIE_SAMESITE,
+    )
+    return response
+
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = 'register'
@@ -30,10 +68,11 @@ class RegisterView(APIView):
         user = serializer.save()
         # H3: a brand-new account gets a brand-new token (never get_or_create).
         token = Token.objects.create(user=user)
-        return Response({
+        response = Response({
             'user': UserSerializer(user).data,
             'token': token.key
         }, status=status.HTTP_201_CREATED)
+        return _set_token_cookie(response, token)
 
 
 class LoginView(APIView):
@@ -51,10 +90,11 @@ class LoginView(APIView):
             # replayed tokens die immediately on login.
             Token.objects.filter(user=user).delete()
             token = Token.objects.create(user=user)
-            return Response({
+            response = Response({
                 'user': UserSerializer(user).data,
                 'token': token.key
             })
+            return _set_token_cookie(response, token)
         return Response(
             {'error': 'Credenciales inválidas'},
             status=status.HTTP_401_UNAUTHORIZED
@@ -84,7 +124,11 @@ class LogoutView(APIView):
         # H3: scoped logout - only the presented token is deleted.
         if request.auth is not None:
             request.auth.delete()
-        return Response({'message': 'Sesión cerrada'}, status=status.HTTP_200_OK)
+        response = Response(
+            {'message': 'Sesión cerrada'}, status=status.HTTP_200_OK
+        )
+        # Clear the httpOnly session cookie so the browser forgets the token.
+        return _delete_token_cookie(response)
 
 
 class RefreshTokenView(APIView):
@@ -100,7 +144,8 @@ class RefreshTokenView(APIView):
             )
         request.auth.delete()
         token = Token.objects.create(user=request.user)
-        return Response({'token': token.key})
+        response = Response({'token': token.key})
+        return _set_token_cookie(response, token)
 
 
 class TwoFAEnrollView(APIView):

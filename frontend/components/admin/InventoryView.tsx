@@ -9,7 +9,6 @@ import {
   RotateCcw,
   TrendingUp,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
 import {
   getProducts,
   getStaffOrders,
@@ -73,7 +72,6 @@ function stockLabel(product: Product): string | null {
 // últimos 7 días derivado en cliente del payload de pedidos (getStaffOrders).
 // El flujo no usa agregación: se calcula sobre la ventana acotada de pedidos.
 export default function InventoryView() {
-  const { token } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,9 +80,8 @@ export default function InventoryView() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!token) return;
 
-    Promise.all([getProducts(), getStaffOrders(token)])
+    Promise.all([getProducts(), getStaffOrders()])
       .then(([productData, orderData]) => {
         if (!cancelled) {
           setProducts(productData);
@@ -106,7 +103,7 @@ export default function InventoryView() {
     return () => {
       cancelled = true;
     };
-  }, [token, retryKey]);
+  }, [retryKey]);
 
   function refresh() {
     setRetryKey((key) => key + 1);

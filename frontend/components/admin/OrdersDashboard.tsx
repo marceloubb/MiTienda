@@ -10,7 +10,6 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { sileo } from "sileo";
-import { useAuth } from "@/lib/auth-context";
 import { advanceOrder, cancelOrder, getStaffOrders, type Order, type OrderStatus } from "@/lib/api";
 import { OrderStatusBadge } from "@/lib/order-status";
 import { Button } from "@/components/ui/button";
@@ -40,7 +39,6 @@ function formatDate(value: string): string {
 }
 
 export default function OrdersDashboard() {
-  const { token } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,9 +47,8 @@ export default function OrdersDashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!token) return;
 
-    getStaffOrders(token)
+    getStaffOrders()
       .then((data) => {
         if (!cancelled) {
           setOrders(data);
@@ -72,20 +69,19 @@ export default function OrdersDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [token, reloadKey]);
+  }, [reloadKey]);
 
   function refresh() {
     setReloadKey((key) => key + 1);
   }
 
   async function handleAdvance(order: Order) {
-    if (!token) return;
     const next = NEXT_STATUS[order.status];
     if (!next) return;
 
     setPendingIds((ids) => new Set(ids).add(order.id));
     try {
-      const updated = await advanceOrder(token, order.id, next);
+      const updated = await advanceOrder(order.id, next);
       sileo.success({
         title: "Pedido avanzado",
         description: `El pedido #${updated.id} pasó a "${updated.status_display}".`,
@@ -104,11 +100,9 @@ export default function OrdersDashboard() {
   }
 
   async function handleCancel(order: Order) {
-    if (!token) return;
-
     setPendingIds((ids) => new Set(ids).add(order.id));
     try {
-      const updated = await cancelOrder(token, order.id);
+      const updated = await cancelOrder(order.id);
       sileo.success({
         title: "Pedido cancelado",
         description: `El pedido #${updated.id} se canceló y el stock fue restaurado.`,

@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // F2: never leak the framework banner in response headers.
   poweredByHeader: false,
+  // Minimal self-hosted image: trace only the files needed at runtime
+  // (frontend/Dockerfile copies .next/standalone into the runner stage).
+  output: "standalone",
   async headers() {
     return [
       {

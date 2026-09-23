@@ -16,17 +16,17 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const { token, updateCart } = useAuth();
+  const { user, updateCart } = useAuth();
   const router = useRouter();
 
   async function handleAddToCart() {
-    if (!token) {
+    if (!user) {
       router.push("/login");
       return;
     }
 
     try {
-      const cart = await addToCart(token, product.id);
+      const cart = await addToCart(product.id);
       updateCart(cart);
       sileo.success({
         title: "Agregado al carrito",

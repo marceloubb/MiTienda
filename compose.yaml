@@ -1,0 +1,48 @@
+name: mitienda
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mitienda
+      POSTGRES_USER: mitienda
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the root .env file}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mitienda -d mitienda"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_DEBUG: "False"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY in the root .env file}
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+      DJANGO_ADMIN_URL: "admin/"
+      DJANGO_EMAIL_BACKEND: "console"
+      DATABASE_URL: "postgres://mitienda:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the root .env file}@db:5432/mitienda"
+      DJANGO_SECURE_MODE: "False"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: "http://localhost:8000/api"
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:8000/api"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
