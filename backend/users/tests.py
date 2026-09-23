@@ -1,8 +1,11 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase, TransactionTestCase
+from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient, APIRequestFactory
 
@@ -492,3 +495,146 @@ class LoginThrottleTests(TestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, 429)
+
+
+def _age_token(token, hours_old):
+    """Move a token's created timestamp into the past (replaces freeze_time)."""
+    Token.objects.filter(pk=token.pk).update(
+        created=timezone.now() - timedelta(hours=hours_old)
+    )
+    return token.key
+
+
+class TokenTTLTests(TestCase):
+    """H3 - ExpiringTokenAuthentication rejects tokens older than the TTL."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='ttluser', password='testpass123')
+        self.client = APIClient()
+
+    def test_expired_token_rejected_with_401(self):
+        key = _age_token(Token.objects.create(user=self.user), 25)
+
+        response = self.client.get(
+            '/api/users/profile/', HTTP_AUTHORIZATION=f'Token {key}'
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_token_within_ttl_accepted(self):
+        key = _age_token(Token.objects.create(user=self.user), 1)
+
+        response = self.client.get(
+            '/api/users/profile/', HTTP_AUTHORIZATION=f'Token {key}'
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+
+class TokenRotationTests(TestCase):
+    """H3 - login replaces the previous token; register issues a fresh token."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='rotator', password='testpass123')
+        self.client = APIClient()
+
+    def test_login_rotates_token_and_old_one_is_invalid(self):
+        old = Token.objects.create(user=self.user)
+
+        response = self.client.post('/api/users/login/', {
+            'username': 'rotator', 'password': 'testpass123',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        new_key = response.data['token']
+        self.assertNotEqual(new_key, old.key)
+        self.assertEqual(Token.objects.filter(user=self.user).count(), 1)
+        stale = self.client.get(
+            '/api/users/profile/', HTTP_AUTHORIZATION=f'Token {old.key}'
+        )
+        self.assertEqual(stale.status_code, 401)
+
+    def test_register_issues_fresh_token_usable_at_registration_time(self):
+        response = self.client.post('/api/users/register/', {
+            'username': 'freshuser', 'email': 'fresh@example.com',
+            'password': 'Tr0ub4dor&3',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        token = Token.objects.get(user__username='freshuser')
+        self.assertEqual(token.key, response.data['token'])
+        # A brand-new token created at registration time, never a recycled one.
+        self.assertEqual(Token.objects.filter(user__username='freshuser').count(), 1)
+        self.assertGreaterEqual(token.created, timezone.now() - timedelta(minutes=1))
+        profile = self.client.get(
+            '/api/users/profile/', HTTP_AUTHORIZATION=f'Token {token.key}'
+        )
+        self.assertEqual(profile.status_code, 200)
+
+
+class RefreshTokenTests(TestCase):
+    """H3 - POST /api/users/token/refresh/ rotates the presented token."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='refresher', password='testpass123')
+        self.client = APIClient()
+
+    def test_refresh_rotates_token_and_old_one_is_invalid(self):
+        old = Token.objects.create(user=self.user)
+
+        response = self.client.post(
+            '/api/users/token/refresh/', HTTP_AUTHORIZATION=f'Token {old.key}'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        new_key = response.data['token']
+        self.assertNotEqual(new_key, old.key)
+        self.assertEqual(Token.objects.filter(user=self.user).count(), 1)
+        stale = self.client.get(
+            '/api/users/profile/', HTTP_AUTHORIZATION=f'Token {old.key}'
+        )
+        self.assertEqual(stale.status_code, 401)
+        fresh = self.client.get(
+            '/api/users/profile/', HTTP_AUTHORIZATION=f'Token {new_key}'
+        )
+        self.assertEqual(fresh.status_code, 200)
+
+    def test_refresh_with_expired_token_returns_401(self):
+        key = _age_token(Token.objects.create(user=self.user), 25)
+
+        response = self.client.post(
+            '/api/users/token/refresh/', HTTP_AUTHORIZATION=f'Token {key}'
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+
+class ScopedLogoutTests(TestCase):
+    """H3 - logout deletes only the presented token, never another user's.
+
+    Note: DRF's stock authtoken Token.user is a OneToOneField, so a single
+    user can never hold two tokens; scoping is proven by asserting an
+    unrelated user's token survives the logout.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='twoface', password='testpass123')
+        self.client = APIClient()
+
+    def test_logout_deletes_only_the_presented_token(self):
+        token = Token.objects.create(user=self.user)
+        other = User.objects.create_user(username='otherdev', password='testpass123')
+        other_token = Token.objects.create(user=other)
+
+        response = self.client.post(
+            '/api/users/logout/', HTTP_AUTHORIZATION=f'Token {token.key}'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Token.objects.filter(pk=token.pk).exists())
+        # The presented token belonged to self.user; the other device survives.
+        self.assertTrue(Token.objects.filter(pk=other_token.pk).exists())
+        ok = self.client.get(
+            '/api/users/profile/', HTTP_AUTHORIZATION=f'Token {other_token.key}'
+        )
+        self.assertEqual(ok.status_code, 200)
