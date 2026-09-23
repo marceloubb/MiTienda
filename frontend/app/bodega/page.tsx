@@ -22,6 +22,7 @@ import {
   type OrderStatus,
 } from "@/lib/api";
 import { OrderStatusBadge, STATUS_FALLBACK_LABELS } from "@/lib/order-status";
+import InventoryView from "@/components/admin/InventoryView";
 import RequireRole from "@/components/RequireRole";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,10 +69,13 @@ export default function BodegaPage() {
           </h1>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Cola de preparación de pedidos: de pendiente a listo para despacho.
+          Inventario y cola de preparación de pedidos: de pendiente a listo para despacho.
         </p>
         <div className="mt-6">
           <BodegaQueue />
+        </div>
+        <div className="mt-6">
+          <InventoryView />
         </div>
       </div>
     </RequireRole>
