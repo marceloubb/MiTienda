@@ -15,6 +15,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Nonce-based CSP (frontend/proxy.ts) requires every page to render per
+// request: static pages have no request headers, so no nonce can be injected.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "MiTienda - Todo para tu proyecto",
   description: "Herramientas y materiales profesionales con envío rápido",
