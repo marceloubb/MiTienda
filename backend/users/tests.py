@@ -9,6 +9,8 @@ from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient, APIRequestFactory
 
+from django_otp.plugins.otp_totp.models import TOTPDevice
+
 from users.models import UserProfile
 from users.permissions import IsAdmin, IsBodega, IsDespacho, IsStaffRole
 
@@ -503,6 +505,132 @@ def _age_token(token, hours_old):
         created=timezone.now() - timedelta(hours=hours_old)
     )
     return token.key
+
+
+def _current_totp_code(device):
+    """RFC 6238 code for a TOTPDevice at the current time (test helper)."""
+    from django_otp.oath import totp
+
+    return str(
+        totp(device.bin_key, device.step, device.t0, device.digits, device.drift)
+    ).zfill(device.digits)
+
+
+class TwoFAEnrollConfirmTests(TestCase):
+    """H10 - admin-role users enroll and confirm a TOTP device."""
+
+    def setUp(self):
+        self.admin = _role_user('totpadmin', 'admin')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_enroll_then_confirm_activates_device(self):
+        enroll = self.client.post('/api/users/2fa/enroll/')
+
+        self.assertEqual(enroll.status_code, 201)
+        device = TOTPDevice.objects.get(pk=enroll.data['device_id'])
+        self.assertFalse(device.confirmed)
+        self.assertEqual(enroll.data['secret'], device.key)
+        self.assertIn('otpauth://totp/', enroll.data['provisioning_uri'])
+
+        confirm = self.client.post('/api/users/2fa/confirm/', {
+            'device_id': device.pk,
+            'code': _current_totp_code(device),
+        }, format='json')
+
+        self.assertEqual(confirm.status_code, 200)
+        device.refresh_from_db()
+        self.assertTrue(device.confirmed)
+
+    def test_confirmation_with_bad_code_blocks_activation(self):
+        enroll = self.client.post('/api/users/2fa/enroll/')
+        device = TOTPDevice.objects.get(pk=enroll.data['device_id'])
+
+        confirm = self.client.post('/api/users/2fa/confirm/', {
+            'device_id': device.pk,
+            'code': '000000',
+        }, format='json')
+
+        self.assertEqual(confirm.status_code, 400)
+        device.refresh_from_db()
+        self.assertFalse(device.confirmed)
+
+    def test_enroll_rejects_when_confirmed_device_exists(self):
+        self.client.post('/api/users/2fa/enroll/')
+        device = TOTPDevice.objects.get(user=self.admin)
+        device.confirmed = True
+        device.save(update_fields=['confirmed'])
+
+        response = self.client.post('/api/users/2fa/enroll/')
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_enroll_requires_admin_role(self):
+        customer = _role_user('plain', 'customer')
+        client = APIClient()
+        client.force_authenticate(user=customer)
+
+        response = client.post('/api/users/2fa/enroll/')
+
+        self.assertEqual(response.status_code, 403)
+
+
+class TwoFAGateTests(TestCase):
+    """H10 - X-TOTP enforcement on token requests; off by default."""
+
+    def setUp(self):
+        self.admin = _role_user('gated', 'admin')
+        self.client = APIClient()
+        self.token = Token.objects.create(user=self.admin)
+
+    def _confirmed_device(self):
+        return TOTPDevice.objects.create(
+            user=self.admin, name='default', confirmed=True
+        )
+
+    def test_missing_totp_code_rejected_with_totp_required(self):
+        self._confirmed_device()
+
+        with self.settings(DJANGO_2FA_ENFORCED=True):
+            response = self.client.get(
+                '/api/users/profile/', HTTP_AUTHORIZATION=f'Token {self.token.key}'
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.data.get('code'), 'totp_required')
+
+    def test_wrong_totp_code_rejected(self):
+        self._confirmed_device()
+
+        with self.settings(DJANGO_2FA_ENFORCED=True):
+            response = self.client.get(
+                '/api/users/profile/',
+                HTTP_AUTHORIZATION=f'Token {self.token.key}',
+                HTTP_X_TOTP='000000',
+            )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_valid_totp_code_accepted(self):
+        device = self._confirmed_device()
+
+        with self.settings(DJANGO_2FA_ENFORCED=True):
+            response = self.client.get(
+                '/api/users/profile/',
+                HTTP_AUTHORIZATION=f'Token {self.token.key}',
+                HTTP_X_TOTP=_current_totp_code(device),
+            )
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_gate_off_allows_request_without_code(self):
+        self._confirmed_device()
+
+        response = self.client.get(
+            '/api/users/profile/', HTTP_AUTHORIZATION=f'Token {self.token.key}'
+        )
+
+        self.assertEqual(response.status_code, 200)
 
 
 class TokenTTLTests(TestCase):

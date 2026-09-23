@@ -6,6 +6,7 @@ from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
+from django_otp.plugins.otp_totp.models import TOTPDevice
 from .serializers import (
     UserSerializer,
     RegisterSerializer,
@@ -97,6 +98,58 @@ class RefreshTokenView(APIView):
         request.auth.delete()
         token = Token.objects.create(user=request.user)
         return Response({'token': token.key})
+
+
+class TwoFAEnrollView(APIView):
+    """POST /api/users/2fa/enroll/ (admin-only) starts TOTP enrollment (H10).
+
+    Rejects when a confirmed device already exists; stale unconfirmed
+    attempts are deleted so each enrollment starts fresh.
+    """
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request):
+        user = request.user
+        if TOTPDevice.objects.filter(user=user, confirmed=True).exists():
+            return Response(
+                {'error': 'Ya existe un dispositivo 2FA confirmado.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        TOTPDevice.objects.filter(user=user, confirmed=False).delete()
+        device = TOTPDevice.objects.create(
+            user=user, name='default', confirmed=False
+        )
+        return Response({
+            'device_id': device.pk,
+            'secret': device.key,
+            'provisioning_uri': device.config_url,
+        }, status=status.HTTP_201_CREATED)
+
+
+class TwoFAConfirmView(APIView):
+    """POST /api/users/2fa/confirm/ activates a device after a valid code."""
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request):
+        device = get_object_or_404(
+            TOTPDevice, pk=request.data.get('device_id'), user=request.user
+        )
+        if device.confirmed:
+            return Response(
+                {'error': 'El dispositivo ya está confirmado.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        code = request.data.get('code')
+        if not code or not device.verify_token(code):
+            return Response(
+                {'error': 'Código TOTP inválido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        device.confirmed = True
+        device.save(update_fields=['confirmed'])
+        return Response({'confirmed': True})
 
 
 class UserDetailView(APIView):
