@@ -1,15 +1,18 @@
 import os
 import threading
+from datetime import timedelta
 from decimal import Decimal
 from unittest import skipUnless
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase, TransactionTestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from orders.models import Cart, CartItem, Order, OrderItem
+from orders.models import Cart, CartItem, Order, OrderEvent, OrderItem
 from products.models import Category, Product
 from users.models import UserProfile
 
@@ -831,6 +834,354 @@ class DiscrepancyFlowTests(StaffOrderTestBase):
         self.assertEqual(flagged_data['status'], 'discrepancy')
         self.assertEqual(flagged_data['discrepancy_reason'], 'damaged')
         self.assertEqual(normal_data['discrepancy_reason'], '')
+
+
+class OrderEventModelTests(TestCase):
+    """OrderEvent fields, ordering, and server-clock guarantees (D4)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='event-buyer', password='testpass123')
+        self.order = Order.objects.create(
+            user=self.user,
+            total=Decimal('10.00'),
+            shipping_name='Test User',
+            shipping_address='123 Test St',
+            shipping_city='Test City',
+            shipping_postal_code='12345',
+            shipping_phone='555-1234',
+            payment_method='card',
+        )
+
+    def test_event_stores_exact_transition_data(self):
+        OrderEvent.objects.create(
+            order=self.order,
+            event_type='advanced',
+            from_status='processing',
+            to_status='ready',
+        )
+
+        event = self.order.events.get(event_type='advanced')
+
+        self.assertEqual(event.from_status, 'processing')
+        self.assertEqual(event.to_status, 'ready')
+        self.assertIsNotNone(event.timestamp)
+
+    def test_timestamp_comes_from_server_clock(self):
+        event = OrderEvent.objects.create(
+            order=self.order,
+            event_type='advanced',
+            from_status='pending',
+            to_status='processing',
+        )
+
+        # default=timezone.now: the recorded value is measured just after insert.
+        self.assertLess(abs((timezone.now() - event.timestamp).total_seconds()), 5)
+
+    def test_events_ordered_by_timestamp_then_id(self):
+        created = OrderEvent.objects.create(
+            order=self.order,
+            event_type='created',
+            from_status=None,
+            to_status='pending',
+            timestamp=timezone.now() - timedelta(days=1),
+        )
+        advanced = OrderEvent.objects.create(
+            order=self.order,
+            event_type='advanced',
+            from_status='pending',
+            to_status='processing',
+        )
+
+        # Meta ordering: timestamp ascending, id as natural tiebreak.
+        self.assertEqual(list(self.order.events.all()), [created, advanced])
+
+
+class OrderEventBackfillMigrationTests(TransactionTestCase):
+    """0004 RunPython backfills `created` events for pre-change orders."""
+
+    MIGRATE_FROM = '0003_order_discrepancy_reason_and_more'
+    MIGRATE_TO = '0004_orderevent'
+
+    def test_legacy_order_gets_backfilled_created_event(self):
+        executor = MigrationExecutor(connection)
+        old_apps = executor.loader.project_state([('orders', self.MIGRATE_FROM)]).apps
+
+        # Rewind the orders app to 0003 so the forward run re-executes backfill.
+        executor.migrate([('orders', self.MIGRATE_FROM)])
+
+        User = old_apps.get_model('auth', 'User')
+        Order = old_apps.get_model('orders', 'Order')
+        user = User.objects.create_user(username='legacy-buyer', password='testpass123')
+        legacy = Order.objects.create(
+            user=user,
+            total=Decimal('10.00'),
+            status='pending',
+            shipping_name='Legacy User',
+            shipping_address='1 Old St',
+            shipping_city='Old City',
+            shipping_postal_code='00000',
+            shipping_phone='555-0000',
+            payment_method='card',
+        )
+
+        executor = MigrationExecutor(connection)
+        executor.migrate([('orders', self.MIGRATE_TO)])
+        new_apps = executor.loader.project_state([('orders', self.MIGRATE_TO)]).apps
+        OrderEvent = new_apps.get_model('orders', 'OrderEvent')
+
+        events = list(OrderEvent.objects.filter(order_id=legacy.id))
+
+        self.assertEqual(len(events), 1)
+        event = events[0]
+        self.assertEqual(event.event_type, 'created')
+        self.assertIsNone(event.from_status)
+        self.assertEqual(event.to_status, 'pending')
+        self.assertEqual(event.timestamp, legacy.created_at)
+
+
+class OrderEventTransitionTests(StaffOrderTestBase):
+    """Every transition appends its event in-transaction; rejects append none."""
+
+    def _shipping_data(self):
+        return {
+            'shipping_name': 'Test User',
+            'shipping_address': '123 Test St',
+            'shipping_city': 'Test City',
+            'shipping_postal_code': '12345',
+            'shipping_phone': '555-1234',
+            'payment_method': 'card',
+        }
+
+    def _advance(self, user, order, **data):
+        return self._client(user).post(
+            f'/api/staff/orders/{order.id}/advance/', data, format='json'
+        )
+
+    def _flag(self, user, order, reason='missing'):
+        return self._client(user).post(
+            f'/api/staff/orders/{order.id}/discrepancy/', {'reason': reason},
+            format='json'
+        )
+
+    def _resolve(self, user, order):
+        return self._client(user).post(
+            f'/api/staff/orders/{order.id}/resolve-discrepancy/'
+        )
+
+    def _cancel(self, user, order):
+        return self._client(user).post(
+            f'/api/staff/orders/{order.id}/cancel/'
+        )
+
+    def test_create_from_cart_appends_created_event(self):
+        cart = Cart.objects.create(user=self.buyer)
+        CartItem.objects.create(cart=cart, product=self.product_a, quantity=2)
+
+        response = self._client(self.buyer).post(
+            '/api/orders/create_from_cart/', self._shipping_data(), format='json'
+        )
+
+        self.assertEqual(response.status_code, 201)
+        order = Order.objects.get(user=self.buyer)
+        events = list(order.events.all())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].event_type, 'created')
+        self.assertIsNone(events[0].from_status)
+        self.assertEqual(events[0].to_status, 'pending')
+        self.assertEqual(events[0].timestamp, order.created_at)
+
+    def test_advance_appends_advanced_event(self):
+        order = self._order(status='processing')
+
+        response = self._advance(self.bodega, order)
+
+        self.assertEqual(response.status_code, 200)
+        event = order.events.get(event_type='advanced')
+        self.assertEqual(event.from_status, 'processing')
+        self.assertEqual(event.to_status, 'ready')
+
+    def test_discrepancy_appends_event_from_prior_status(self):
+        order = self._order(status='processing')
+
+        response = self._flag(self.bodega, order, reason='damaged')
+
+        self.assertEqual(response.status_code, 200)
+        event = order.events.get(event_type='discrepancy')
+        self.assertEqual(event.from_status, 'processing')
+        self.assertEqual(event.to_status, 'discrepancy')
+
+    def test_resolve_appends_resolved_event_to_restored_status(self):
+        order = self._order(status='ready')
+        self._flag(self.bodega, order, reason='missing')
+
+        response = self._resolve(self.admin, order)
+
+        self.assertEqual(response.status_code, 200)
+        event = order.events.get(event_type='resolved')
+        self.assertEqual(event.from_status, 'discrepancy')
+        self.assertEqual(event.to_status, 'ready')
+
+    def test_cancel_appends_cancelled_event_with_prior_status(self):
+        order = self._order(status='shipped')
+
+        response = self._cancel(self.admin, order)
+
+        self.assertEqual(response.status_code, 200)
+        event = order.events.get(event_type='cancelled')
+        self.assertEqual(event.from_status, 'shipped')
+        self.assertEqual(event.to_status, 'cancelled')
+
+    def test_cancel_of_discrepancy_order_records_discrepancy_source(self):
+        order = self._order(status='discrepancy')
+
+        response = self._cancel(self.admin, order)
+
+        self.assertEqual(response.status_code, 200)
+        event = order.events.get(event_type='cancelled')
+        self.assertEqual(event.from_status, 'discrepancy')
+        self.assertEqual(event.to_status, 'cancelled')
+
+    def test_fabricated_client_timestamp_is_ignored(self):
+        order = self._order(status='processing')
+        fabricated = '2001-01-01T00:00:00Z'
+
+        response = self._advance(self.bodega, order, timestamp=fabricated)
+
+        self.assertEqual(response.status_code, 200)
+        event = order.events.get(event_type='advanced')
+        # Server clock wins: a fabricated client value must never be persisted.
+        self.assertNotEqual(event.timestamp.date().isoformat(), '2001-01-01')
+        self.assertLess(abs((timezone.now() - event.timestamp).total_seconds()), 5)
+
+    def test_rejected_advance_appends_nothing(self):
+        order = self._order(status='pending')
+
+        response = self._advance(self.bodega, order, to_status='ready')
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(order.events.count(), 0)
+
+    def test_blocked_advance_on_discrepancy_appends_nothing(self):
+        order = self._order(status='discrepancy')
+
+        response = self._advance(self.bodega, order)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(order.events.count(), 0)
+
+    def test_flag_with_bad_reason_appends_nothing(self):
+        order = self._order(status='pending')
+
+        response = self._flag(self.bodega, order, reason='broken')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(order.events.count(), 0)
+
+    def test_flag_from_shipped_appends_nothing(self):
+        order = self._order(status='shipped')
+
+        response = self._flag(self.bodega, order)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(order.events.count(), 0)
+
+    def test_resolve_on_non_discrepancy_appends_nothing(self):
+        order = self._order(status='processing')
+
+        response = self._resolve(self.admin, order)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(order.events.count(), 0)
+
+    def test_cancel_delivered_appends_nothing(self):
+        order = self._order(status='delivered')
+
+        response = self._cancel(self.admin, order)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(order.events.count(), 0)
+
+    def test_non_admin_cancel_appends_nothing(self):
+        order = self._order(status='processing')
+
+        response = self._cancel(self.bodega, order)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(order.events.count(), 0)
+
+
+class OrderEventSerializationTests(StaffOrderTestBase):
+    """events array in customer/staff payloads: ascending, scoped, 404 cross-user."""
+
+    def _shipping_data(self):
+        return {
+            'shipping_name': 'Test User',
+            'shipping_address': '123 Test St',
+            'shipping_city': 'Test City',
+            'shipping_postal_code': '12345',
+            'shipping_phone': '555-1234',
+            'payment_method': 'card',
+        }
+
+    def _checkout(self):
+        cart = Cart.objects.create(user=self.buyer)
+        CartItem.objects.create(cart=cart, product=self.product_a, quantity=2)
+        response = self._client(self.buyer).post(
+            '/api/orders/create_from_cart/', self._shipping_data(), format='json'
+        )
+        self.assertEqual(response.status_code, 201)
+        return Order.objects.get(user=self.buyer)
+
+    def test_delivered_order_payload_has_five_ascending_events(self):
+        order = self._checkout()
+        # bodega: pending->processing, processing->ready; despacho: ready->shipped, shipped->delivered
+        self.assertEqual(
+            self._client(self.bodega).post(f'/api/staff/orders/{order.id}/advance/').status_code, 200)
+        self.assertEqual(
+            self._client(self.bodega).post(f'/api/staff/orders/{order.id}/advance/').status_code, 200)
+        self.assertEqual(
+            self._client(self.despacho).post(f'/api/staff/orders/{order.id}/advance/').status_code, 200)
+        self.assertEqual(
+            self._client(self.despacho).post(f'/api/staff/orders/{order.id}/advance/').status_code, 200)
+
+        response = self._client(self.buyer).get(f'/api/orders/{order.id}/')
+
+        self.assertEqual(response.status_code, 200)
+        events = response.data['events']
+        self.assertEqual(len(events), 5)
+        self.assertEqual(
+            [e['event_type'] for e in events],
+            ['created', 'advanced', 'advanced', 'advanced', 'advanced'],
+        )
+        timestamps = [e['timestamp'] for e in events]
+        self.assertEqual(timestamps, sorted(timestamps))
+        self.assertEqual(events[0]['from_status'], None)
+        self.assertEqual(events[0]['to_status'], 'pending')
+        self.assertEqual(events[1]['from_status'], 'pending')
+        self.assertEqual(events[1]['to_status'], 'processing')
+        self.assertEqual(events[-1]['from_status'], 'shipped')
+        self.assertEqual(events[-1]['to_status'], 'delivered')
+        for event in events:
+            self.assertEqual(
+                set(event), {'event_type', 'from_status', 'to_status', 'timestamp'})
+
+    def test_staff_order_serializer_includes_events(self):
+        order = self._order(status='pending')
+
+        response = self._client(self.admin).get(f'/api/staff/orders/{order.id}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('events', response.data)
+        self.assertEqual(response.data['events'], [])
+
+    def test_cross_user_order_detail_returns_404_without_events(self):
+        order = self._order(status='pending')
+        stranger = User.objects.create_user(username='stranger', password='testpass123')
+
+        response = self._client(stranger).get(f'/api/orders/{order.id}/')
+
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn('events', response.data)
 
 
 @skipUnless(
