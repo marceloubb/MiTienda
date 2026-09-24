@@ -45,10 +45,10 @@ export default function CartPage() {
         <div className="mt-6 grid gap-6 md:grid-cols-3">
           <div className="space-y-3 md:col-span-2">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 w-full rounded-xl" aria-hidden="true" />
+              <Skeleton key={i} className="h-28 w-full rounded-2xl" aria-hidden="true" />
             ))}
           </div>
-          <Skeleton className="h-64 w-full rounded-xl" aria-hidden="true" />
+          <Skeleton className="h-64 w-full rounded-2xl" aria-hidden="true" />
         </div>
       </div>
     );
@@ -110,7 +110,7 @@ export default function CartPage() {
   if (!cart || cart.items.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
-        <Card className="w-full p-8 text-center sm:p-12">
+        <Card className="w-full rounded-2xl p-8 text-center sm:p-12">
           <ShoppingBag className="mx-auto size-12 text-muted-foreground/50" />
           <h1 className="mt-4 text-xl font-bold text-foreground">
             Tu carrito está vacío
@@ -142,17 +142,17 @@ export default function CartPage() {
       <div className="mt-6 grid gap-6 md:grid-cols-3">
         {/* Lista */}
         <div className="md:col-span-2">
-          <div className="overflow-hidden rounded-xl bg-card ring-1 ring-border">
+          <div className="overflow-hidden rounded-2xl bg-surface-container-lowest ring-1 ring-outline-variant">
             {cart.items.map((item, index) => {
               const isPending = pendingId === item.product.id;
               return (
                 <div
                   key={item.id}
                   className={`flex flex-wrap items-center gap-4 p-4 ${
-                    index !== cart.items.length - 1 ? "border-b border-border" : ""
+                    index !== cart.items.length - 1 ? "border-b border-outline-variant" : ""
                   }`}
                 >
-                  <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-surface-1 sm:size-20">
+                  <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-surface-container-high sm:size-20">
                     {item.product.image ? (
                       <img
                         src={item.product.image}
@@ -223,7 +223,7 @@ export default function CartPage() {
                         handleRemoveItem(item.product.id, item.product.name)
                       }
                       disabled={isPending}
-                      className="mt-1 h-10 text-offer hover:bg-offer/10 hover:text-offer sm:h-6"
+                      className="mt-1 h-10 text-error hover:bg-error/10 hover:text-error sm:h-6"
                     >
                       <Trash2 />
                       Eliminar
@@ -265,7 +265,7 @@ export default function CartPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setConfirmingClear(true)}
-                className="text-muted-foreground hover:text-offer"
+                className="text-muted-foreground hover:text-error"
               >
                 <Trash2 />
                 Vaciar carrito
@@ -276,7 +276,7 @@ export default function CartPage() {
 
         {/* Resumen */}
         <div className="md:col-span-1">
-          <Card className="sticky top-24 gap-4 p-6">
+          <Card className="sticky top-24 gap-4 rounded-2xl p-6">
             <h2 className="text-lg font-bold text-foreground">Resumen</h2>
 
             <div className="space-y-2">
