@@ -9,19 +9,17 @@ import {
   PackageOpen,
   RotateCcw,
   Warehouse,
-  X,
 } from "lucide-react";
 import { sileo } from "sileo";
 import {
   advanceOrder,
-  flagDiscrepancy,
   getStaffOrders,
-  type DiscrepancyReason,
   type Order,
   type OrderStatus,
 } from "@/lib/api";
 import { OrderStatusBadge, STATUS_FALLBACK_LABELS } from "@/lib/order-status";
 import InventoryView from "@/components/admin/InventoryView";
+import { DiscrepancyModal } from "@/components/admin/DiscrepancyPanel";
 import RequireRole from "@/components/RequireRole";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,7 +85,7 @@ function BodegaQueue() {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [pendingIds, setPendingIds] = useState<Set<number>>(new Set());
-  const [flaggingId, setFlaggingId] = useState<number | null>(null);
+  const [flaggingOrder, setFlaggingOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,31 +141,9 @@ function BodegaQueue() {
     }
   }
 
-  async function handleFlag(order: Order, reason: DiscrepancyReason) {
-    setPendingIds((ids) => new Set(ids).add(order.id));
-    try {
-      const updated = await flagDiscrepancy(order.id, reason);
-      sileo.success({
-        title: "Discrepancia marcada",
-        description: `El pedido #${updated.id} quedó bloqueado por "${REASON_LABELS[reason].toLowerCase()}".`,
-      });
-      refresh();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "No se pudo marcar la discrepancia.";
-      sileo.error({ title: "No se pudo marcar la discrepancia", description: message });
-    } finally {
-      setFlaggingId(null);
-      setPendingIds((ids) => {
-        const nextIds = new Set(ids);
-        nextIds.delete(order.id);
-        return nextIds;
-      });
-    }
-  }
-
   if (isLoading) {
     return (
-      <Card>
+      <Card className="rounded-2xl ring-outline-variant/70">
         <CardHeader>
           <Skeleton className="h-5 w-56" aria-hidden="true" />
           <Skeleton className="h-4 w-40" aria-hidden="true" />
@@ -183,9 +159,9 @@ function BodegaQueue() {
 
   if (error) {
     return (
-      <Card>
+      <Card className="rounded-2xl ring-outline-variant/70">
         <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
-          <AlertTriangle className="size-10 text-destructive" />
+          <AlertTriangle className="size-10 text-error" />
           <p className="text-sm font-medium text-foreground">{error}</p>
           <Button variant="outline" size="sm" onClick={refresh}>
             <RotateCcw />
@@ -199,92 +175,97 @@ function BodegaQueue() {
   const discrepancyCount = orders.filter((order) => order.status === "discrepancy").length;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Cola de preparación</CardTitle>
-        <CardDescription>
-          {orders.length} pedido{orders.length === 1 ? "" : "s"} · {discrepancyCount} con
-          discrepancia
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {orders.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-10 text-center">
-            <PackageOpen className="size-10 text-muted-foreground/60" />
-            <p className="text-sm text-muted-foreground">
-              No hay pedidos pendientes de preparación.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground">
-                  <th className="py-2 pr-3 font-medium">Pedido</th>
-                  <th className="py-2 pr-3 font-medium">Cliente</th>
-                  <th className="py-2 pr-3 font-medium">Fecha</th>
-                  <th className="py-2 pr-3 font-medium">Estado</th>
-                  <th className="py-2 pr-3 font-medium">Total</th>
-                  <th className="py-2 font-medium">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {orders.map((order) => (
-                  <tr key={order.id}>
-                    <td className="py-2.5 pr-3 font-medium text-foreground">#{order.id}</td>
-                    <td className="py-2.5 pr-3 text-foreground">
-                      {order.shipping_name || "—"}
-                    </td>
-                    <td className="py-2.5 pr-3 text-muted-foreground">
-                      {formatDate(order.created_at)}
-                    </td>
-                    <td className="py-2.5 pr-3">
-                      <OrderStatusBadge status={order.status} display={order.status_display} />
-                    </td>
-                    <td className="py-2.5 pr-3 font-medium text-foreground">
-                      {formatPrice(order.total)}
-                    </td>
-                    <td className="py-2.5">
-                      <QueueActions
-                        order={order}
-                        isPending={pendingIds.has(order.id)}
-                        isFlagging={flaggingId === order.id}
-                        onAdvance={handleAdvance}
-                        onToggleFlag={() =>
-                          setFlaggingId((id) => (id === order.id ? null : order.id))
-                        }
-                        onFlag={handleFlag}
-                      />
-                    </td>
+    <>
+      <Card className="rounded-2xl ring-outline-variant/70">
+        <CardHeader>
+          <CardTitle>Cola de preparación</CardTitle>
+          <CardDescription>
+            {orders.length} pedido{orders.length === 1 ? "" : "s"} · {discrepancyCount} con
+            discrepancia
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {orders.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <PackageOpen className="size-10 text-muted-foreground/60" />
+              <p className="text-sm text-muted-foreground">
+                No hay pedidos pendientes de preparación.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[680px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-outline-variant text-xs text-on-surface-variant">
+                    <th className="py-2 pr-3 font-medium">Pedido</th>
+                    <th className="py-2 pr-3 font-medium">Cliente</th>
+                    <th className="py-2 pr-3 font-medium">Fecha</th>
+                    <th className="py-2 pr-3 font-medium">Estado</th>
+                    <th className="py-2 pr-3 font-medium">Total</th>
+                    <th className="py-2 font-medium">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                </thead>
+                <tbody className="divide-y divide-outline-variant">
+                  {orders.map((order) => (
+                    <tr
+                      key={order.id}
+                      className="transition-colors hover:bg-surface-container-low/60"
+                    >
+                      <td className="py-2.5 pr-3 font-medium text-foreground">#{order.id}</td>
+                      <td className="py-2.5 pr-3 text-foreground">
+                        {order.shipping_name || "—"}
+                      </td>
+                      <td className="py-2.5 pr-3 text-muted-foreground">
+                        {formatDate(order.created_at)}
+                      </td>
+                      <td className="py-2.5 pr-3">
+                        <OrderStatusBadge status={order.status} display={order.status_display} />
+                      </td>
+                      <td className="py-2.5 pr-3 font-medium text-foreground">
+                        {formatPrice(order.total)}
+                      </td>
+                      <td className="py-2.5">
+                        <QueueActions
+                          order={order}
+                          isPending={pendingIds.has(order.id)}
+                          onAdvance={handleAdvance}
+                          onFlag={() => setFlaggingOrder(order)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <DiscrepancyModal
+        order={flaggingOrder}
+        onClose={() => setFlaggingOrder(null)}
+        onFlagged={() => {
+          setFlaggingOrder(null);
+          refresh();
+        }}
+      />
+    </>
   );
 }
 
 function QueueActions({
   order,
   isPending,
-  isFlagging,
   onAdvance,
-  onToggleFlag,
   onFlag,
 }: {
   order: Order;
   isPending: boolean;
-  isFlagging: boolean;
   onAdvance: (order: Order) => void;
-  onToggleFlag: () => void;
-  onFlag: (order: Order, reason: DiscrepancyReason) => void;
+  onFlag: (order: Order) => void;
 }) {
   if (order.status === "discrepancy") {
     return (
-      <span className="text-xs text-muted-foreground">
+      <span className="inline-block rounded-full bg-error-container px-2.5 py-0.5 text-xs font-semibold text-on-error-container">
         {REASON_LABELS[order.discrepancy_reason ?? ""] ??
           order.discrepancy_reason ??
           "Bloqueado por discrepancia"}
@@ -299,7 +280,7 @@ function QueueActions({
       {next && (
         <Button
           size="sm"
-          variant="secondary"
+          className="bg-primary text-on-primary hover:bg-primary/90"
           disabled={isPending}
           onClick={() => onAdvance(order)}
         >
@@ -307,42 +288,12 @@ function QueueActions({
           Avanzar a {STATUS_FALLBACK_LABELS[next] ?? next}
         </Button>
       )}
-      {FLAGGABLE_STATUSES.includes(order.status) &&
-        (isFlagging ? (
-          <>
-            <span className="text-xs text-muted-foreground">Motivo:</span>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isPending}
-              onClick={() => onFlag(order, "missing")}
-            >
-              Falta mercadería
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isPending}
-              onClick={() => onFlag(order, "damaged")}
-            >
-              Mercadería dañada
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={isPending}
-              onClick={onToggleFlag}
-              aria-label="Cancelar marcado de discrepancia"
-            >
-              <X />
-            </Button>
-          </>
-        ) : (
-          <Button size="sm" variant="outline" disabled={isPending} onClick={onToggleFlag}>
-            <Flag />
-            Marcar discrepancia
-          </Button>
-        ))}
+      {FLAGGABLE_STATUSES.includes(order.status) && (
+        <Button size="sm" variant="outline" disabled={isPending} onClick={() => onFlag(order)}>
+          <Flag />
+          Marcar discrepancia
+        </Button>
+      )}
     </div>
   );
 }
