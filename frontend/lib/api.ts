@@ -391,6 +391,23 @@ export type OrderStatus =
 
 export type DiscrepancyReason = 'missing' | 'damaged';
 
+// Append-only order event trail (backend OrderEvent): the single source of
+// truth for an order's timeline (design D4). Timestamps come from the server
+// clock; the frontend never invents them.
+export type OrderEventType =
+  | 'created'
+  | 'advanced'
+  | 'discrepancy'
+  | 'resolved'
+  | 'cancelled';
+
+export interface OrderEvent {
+  event_type: OrderEventType;
+  from_status: OrderStatus | null;
+  to_status: OrderStatus;
+  timestamp: string;
+}
+
 export interface User {
   id: number;
   username: string;
@@ -452,6 +469,7 @@ export interface Order {
   payment_method: string;
   notes: string;
   items: OrderItem[];
+  events: OrderEvent[];
   created_at: string;
   updated_at: string;
 }
