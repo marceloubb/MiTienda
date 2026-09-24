@@ -1,11 +1,11 @@
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, ShieldCheck } from "lucide-react";
 import RequireRole from "@/components/RequireRole";
 import OrdersDashboard from "@/components/admin/OrdersDashboard";
 import DiscrepancyPanel from "@/components/admin/DiscrepancyPanel";
 
 // Gestión de pedidos (tarea única): dashboard de pedidos + resolución de
 // discrepancias. El guard es UX-only; la aplicación real de roles vive en las
-// DRF permissions.
+// DRF permissions (matriz server-side).
 export default function AdminOrdersPage() {
   return (
     <RequireRole roles={["admin"]}>
@@ -19,6 +19,15 @@ export default function AdminOrdersPage() {
         <p className="mt-2 text-sm text-muted-foreground">
           Gestión de pedidos y resolución de discrepancias.
         </p>
+        <div className="mt-3 flex items-start gap-2 rounded-xl bg-surface-container-low p-3 text-xs text-on-surface-variant">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p>
+            Matriz server-side activa: el admin puede ejecutar cualquier
+            transición, marcar y resolver discrepancias, y cancelar con
+            restauración de stock. El backend rechaza (403) lo que el rol no
+            puede hacer.
+          </p>
+        </div>
         <div className="mt-6">
           <OrdersDashboard />
         </div>
