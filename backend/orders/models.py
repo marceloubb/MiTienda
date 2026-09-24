@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 from products.models import Product
 
 
@@ -117,3 +118,46 @@ class OrderItem(models.Model):
     @property
     def subtotal(self):
         return self.price * self.quantity
+
+
+class OrderEvent(models.Model):
+    """Append-only record of one order status transition.
+
+    Written inside the same transaction as the status change it describes.
+    Timestamps always come from the server clock (default=timezone.now,
+    editable=False); clients can never supply or override them.
+    """
+
+    EVENT_TYPE_CHOICES = [
+        ('created', 'Creado'),
+        ('advanced', 'Avanzado'),
+        ('discrepancy', 'Discrepancia'),
+        ('resolved', 'Resuelto'),
+        ('cancelled', 'Cancelado'),
+    ]
+
+    order = models.ForeignKey(
+        Order, on_delete=models.CASCADE,
+        related_name='events', verbose_name='Pedido',
+    )
+    event_type = models.CharField(
+        max_length=20, choices=EVENT_TYPE_CHOICES, verbose_name='Tipo de evento',
+    )
+    from_status = models.CharField(
+        max_length=20, null=True, blank=True, verbose_name='Estado anterior',
+    )
+    to_status = models.CharField(max_length=20, verbose_name='Estado posterior')
+    timestamp = models.DateTimeField(
+        default=timezone.now, editable=False, verbose_name='Marca de tiempo',
+    )
+
+    class Meta:
+        verbose_name = 'Evento del pedido'
+        verbose_name_plural = 'Eventos del pedido'
+        ordering = ['timestamp', 'id']
+        indexes = [
+            models.Index(fields=['order', 'timestamp'], name='orders_event_order_ts_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.order_id} {self.event_type} {self.from_status} -> {self.to_status}'
