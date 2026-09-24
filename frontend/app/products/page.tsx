@@ -212,7 +212,7 @@ function ProductsCatalog() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Buscar productos..."
               aria-label="Buscar productos"
-              className="h-9 w-full rounded-lg border border-border bg-card pr-8 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:outline-none"
+              className="h-9 w-full rounded-xl border border-outline-variant bg-surface-container-lowest pr-8 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:outline-none"
             />
             {searchInput && (
               <button
@@ -236,7 +236,7 @@ function ProductsCatalog() {
               value={ordering}
               onChange={(e) => updateParam("ordering", e.target.value || null)}
               aria-label="Ordenar productos"
-              className="h-9 w-full appearance-none rounded-lg border border-border bg-card pr-8 pl-9 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:outline-none sm:w-56"
+              className="h-9 w-full appearance-none rounded-xl border border-outline-variant bg-surface-container-lowest pr-8 pl-9 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:outline-none sm:w-56"
             >
               {ORDERING_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -256,7 +256,7 @@ function ProductsCatalog() {
           className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none ${
             selectedCategory === null
               ? "border-primary bg-primary text-primary-foreground shadow-sm"
-              : "border-border bg-card text-card-foreground hover:border-primary/50 hover:shadow-sm"
+              : "border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary/50 hover:shadow-sm"
           }`}
         >
           <PackageOpen className="size-4" />
@@ -274,7 +274,7 @@ function ProductsCatalog() {
               className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none ${
                 isSelected
                   ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                  : "border-border bg-card text-card-foreground hover:border-primary/50 hover:shadow-sm"
+                  : "border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary/50 hover:shadow-sm"
               }`}
             >
               {getCategoryIconElement(category.name, "size-4")}
@@ -286,7 +286,7 @@ function ProductsCatalog() {
 
       {/* Contenido */}
       {products.length === 0 ? (
-        <Card className="mt-8 w-full p-10 text-center">
+        <Card className="mt-8 w-full rounded-2xl p-10 text-center">
           <PackageOpen className="mx-auto size-10 text-muted-foreground/60" />
           <p className="mt-4 text-sm text-muted-foreground">
             No encontramos productos con los filtros seleccionados.
@@ -370,7 +370,7 @@ function ProductsCatalog() {
 
 function ProductCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-xl bg-card ring-1 ring-border">
+    <div className="overflow-hidden rounded-2xl bg-surface-container-lowest ring-1 ring-outline-variant">
       <Skeleton className="aspect-[4/3] w-full rounded-none" aria-hidden="true" />
       <div className="space-y-2 p-4">
         <Skeleton className="h-3 w-1/3" aria-hidden="true" />

@@ -67,7 +67,7 @@ export default function Home() {
         <Skeleton className="mt-8 h-6 w-40" aria-hidden="true" />
         <div className="mt-4 grid grid-cols-3 gap-3 md:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" aria-hidden="true" />
+            <Skeleton key={i} className="h-24 rounded-2xl" aria-hidden="true" />
           ))}
         </div>
         <Skeleton className="mt-10 h-6 w-32" aria-hidden="true" />
@@ -104,34 +104,40 @@ export default function Home() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-2xl bg-[#1a1a1a] px-6 py-10 text-white md:px-12 md:py-14">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary-container to-secondary px-6 py-10 text-on-primary md:px-12 md:py-14">
         <div
-          className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-primary/25 blur-3xl"
+          className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-on-primary/25 blur-3xl"
           aria-hidden="true"
         />
         <div
-          className="pointer-events-none absolute -bottom-32 -left-16 size-80 rounded-full bg-accent/15 blur-3xl"
+          className="pointer-events-none absolute -bottom-32 -left-16 size-80 rounded-full bg-secondary-container/15 blur-3xl"
           aria-hidden="true"
         />
         <Hammer
-          className="pointer-events-none absolute -right-6 bottom-0 hidden size-48 text-white/5 md:block"
+          className="pointer-events-none absolute -right-6 bottom-0 hidden size-48 text-on-primary/5 md:block"
           aria-hidden="true"
         />
         <div className="relative z-10 max-w-2xl">
-          <Badge className="mb-4 gap-1.5 bg-[#ffd600] text-[#1a1a1a]">
+          <Badge className="mb-4 gap-1.5 bg-secondary-container text-on-secondary-container">
             <Sparkles className="size-3.5" />
             Oferta de la semana
           </Badge>
           <h1 className="text-3xl leading-tight font-bold md:text-4xl">
             Todo para tu proyecto, en un{" "}
-            <span className="text-primary">solo lugar</span>
+            <span className="text-secondary-container">solo lugar</span>
           </h1>
-          <p className="mt-3 text-gray-300">
+          <p className="mt-3 text-on-primary-container">
             Herramientas profesionales y materiales de primera calidad. Envío
             rápido a todo el país.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a href="#products" className={buttonVariants({ size: "lg" })}>
+            <a
+              href="#products"
+              className={buttonVariants({
+                size: "lg",
+                className: "bg-on-primary text-primary hover:bg-on-primary/90",
+              })}
+            >
               Ver ofertas
             </a>
             <Link
@@ -140,7 +146,7 @@ export default function Home() {
                 variant: "outline",
                 size: "lg",
                 className:
-                  "border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white",
+                  "border-on-primary/30 bg-on-primary/10 text-on-primary hover:bg-on-primary/20 hover:text-on-primary",
               })}
             >
               Catálogo completo <ChevronRight />
@@ -171,7 +177,7 @@ export default function Home() {
                 className={`flex flex-col items-center gap-2 rounded-xl border px-2 py-4 transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none ${
                   isSelected
                     ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "border-border bg-card text-card-foreground hover:border-primary/50 hover:shadow-sm"
+                    : "border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary/50 hover:shadow-sm"
                 }`}
               >
                 {getCategoryIconElement(category.name, "size-6")}
@@ -268,7 +274,7 @@ export default function Home() {
 
 function ProductCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-xl bg-card ring-1 ring-border">
+    <div className="overflow-hidden rounded-2xl bg-surface-container-lowest ring-1 ring-outline-variant">
       <Skeleton className="aspect-[4/3] w-full rounded-none" aria-hidden="true" />
       <div className="space-y-2 p-4">
         <Skeleton className="h-3 w-1/3" aria-hidden="true" />

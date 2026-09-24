@@ -51,13 +51,13 @@ export default function ProductCard({ product }: ProductCardProps) {
         ? "text-stock"
         : product.stock > 0
           ? "text-stock-low"
-          : "text-offer",
+          : "text-error",
     dot:
       product.stock > 10
         ? "bg-stock"
         : product.stock > 0
           ? "bg-stock-low"
-          : "bg-offer",
+          : "bg-error",
     label:
       product.stock > 10
         ? "En stock"
@@ -67,13 +67,13 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-xl bg-card text-sm text-card-foreground transition-all duration-200 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/30">
+    <div className="group flex h-full flex-col overflow-hidden rounded-2xl bg-surface-container-lowest text-sm text-on-surface ring-1 ring-outline-variant transition-all duration-200 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/30">
       <Link
         href={`/products/${product.id}`}
-        className="relative block aspect-[4/3] overflow-hidden bg-surface-1"
+        className="relative block aspect-[4/3] overflow-hidden bg-surface-container-low"
       >
         {product.is_on_sale && product.discount_percentage > 0 && (
-          <Badge className="absolute top-2 left-2 z-10 gap-1 bg-offer text-white">
+          <Badge className="absolute top-2 left-2 z-10 gap-1 bg-secondary-container text-on-secondary-container">
             <Tag className="size-3" />
             -{product.discount_percentage}%
           </Badge>
