@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base {html, body {width: 100%; margin: 0; padding: 0;}body {overscroll-behavior-y: none;}.pb-safe {padding-bottom: env(safe-area-inset-bottom, 0px);}.pt-safe {padding-top: env(safe-area-inset-top, 0px);}}::-webkit-scrollbar {display: none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { colors: { 'error': '#ba1a1a', 'on-error-container': '#93000a', 'tertiary-fixed-dim': '#ffb95f', 'secondary-fixed-dim': '#4edea3', 'on-error': '#ffffff', 'primary-fixed': '#dde1ff', 'outline': '#757684', 'surface-bright': '#faf8ff', 'on-background': '#131b2e', 'error-container': '#ffdad6', 'background': '#faf8ff', 'on-secondary': '#ffffff', 'surface-container-low': '#f2f3ff', 'on-surface-variant': '#444653', 'on-tertiary-fixed-variant': '#653e00', 'on-primary-container': '#a8b8ff', 'surface-tint': '#3755c3', 'secondary-fixed': '#6ffbbe', 'inverse-primary': '#b8c4ff', 'on-secondary-fixed': '#002113', 'on-primary': '#ffffff', 'surface-container-high': '#e2e7ff', 'primary-fixed-dim': '#b8c4ff', 'inverse-on-surface': '#eef0ff', 'surface-variant': '#dae2fd', 'on-secondary-container': '#00714d', 'surface-dim': '#d2d9f4', 'primary': '#00288e', 'surface': '#faf8ff', 'primary-container': '#1e40af', 'tertiary-fixed': '#ffddb8', 'tertiary-container': '#6b4200', 'on-tertiary': '#ffffff', 'on-tertiary-fixed': '#2a1700', 'secondary': '#006c49', 'surface-container': '#eaedff', 'surface-container-lowest': '#ffffff', 'on-primary-fixed-variant': '#173bab', 'on-surface': '#131b2e', 'on-tertiary-container': '#ffa929', 'secondary-container': '#6cf8bb', 'inverse-surface': '#283044', 'surface-container-highest': '#dae2fd', 'outline-variant': '#c4c5d5', 'on-primary-fixed': '#001453', 'on-secondary-fixed-variant': '#005236', 'tertiary': '#4c2e00' }, borderRadius: { 'DEFAULT': '0.25rem', 'lg': '0.5rem', 'xl': '0.75rem', 'full': '9999px' }, spacing: { 'space-sm': '0.5rem', 'space-md': '1rem', 'gutter-sm': '0.75rem', 'space-xs': '0.25rem', 'gutter': '1rem', 'space-xl': '2rem', 'space-lg': '1.5rem', 'margin': '1rem', 'margin-desktop': '3rem', 'margin-tablet': '2rem' }, fontFamily: { 'body-md': ['Plus Jakarta Sans'], 'headline-sm': ['Plus Jakarta Sans'], 'price-card': ['Plus Jakarta Sans'], 'headline-lg': ['Plus Jakarta Sans'], 'price-hero': ['Plus Jakarta Sans'], 'display-hero': ['Plus Jakarta Sans'], 'label-md': ['Inter'], 'body-lg': ['Plus Jakarta Sans'], 'headline-md': ['Plus Jakarta Sans'], 'label-badge': ['Inter'], 'body-sm': ['Plus Jakarta Sans'], 'label-lg': ['Inter'] }, fontSize: { 'body-md': ['14px', { lineHeight: '20px', fontWeight: '400' }], 'headline-sm': ['18px', { lineHeight: '24px', fontWeight: '600' }], 'price-card': ['18px', { lineHeight: '22px', fontWeight: '700' }], 'headline-lg': ['28px', { lineHeight: '34px', letterSpacing: '-0.015em', fontWeight: '700' }], 'price-hero': ['24px', { lineHeight: '28px', letterSpacing: '-0.01em', fontWeight: '800' }], 'display-hero': ['36px', { lineHeight: '44px', letterSpacing: '-0.02em', fontWeight: '800' }], 'label-md': ['12px', { lineHeight: '16px', letterSpacing: '0.02em', fontWeight: '600' }], 'body-lg': ['16px', { lineHeight: '24px', fontWeight: '400' }], 'headline-md': ['22px', { lineHeight: '28px', letterSpacing: '-0.01em', fontWeight: '700' }], 'label-badge': ['11px', { lineHeight: '14px', letterSpacing: '0.04em', fontWeight: '700' }], 'body-sm': ['12px', { lineHeight: '16px', fontWeight: '400' }], 'label-lg': ['14px', { lineHeight: '18px', letterSpacing: '0.01em', fontWeight: '600' }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-gutter flex items-center justify-between"><div class="flex items-center gap-space-xs"><button aria-label="Volver" class="w-11 h-11 -ml-2 flex items-center justify-center text-on-surface hover:text-primary transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><img alt="MiTienda Logo" class="h-7 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1Wva-JDAVaReu3igEiUYpMoGdvBWYwe4ENczhivSjIABtj_KfILgts8BxfAOupion5A54Ydrdq5izxRHR610FNqlOtir_I_7aX_ulW84qW0WCJ5Eas9ywUswG_PJG25UzXtNaMH6trLmV0DM3ApxXVR278HBOH5XyI1KihWtSKkAaepKk2QZt-lUB3O6nL7YZjbg_PSBz88Qz_mJ2AoLsBUmVvHsG6Vkoc0EBKSTfc7fDAbvluOVR_t"/><h1 class="font-headline-sm text-headline-sm text-on-surface font-bold truncate max-w-[160px]">Proceso De Pago</h1></div><div class="flex items-center gap-space-xs"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgzIdch4zODl51RlHMbuhB-J4_5HsIiEnlm6-7rJE4nJ1cPDhoallnCiPAnLjM3qLJm38sIUiC64x_aQXcnu0xgq5rU1WqmDkm2MBnHviGFpVdNsmtow4-O7HB4o2YfdLBaHDZ8nsfzVkCgjs6Xbk-ZMPhqSQtd1Bnv0CEqKSus0Hy_b1w-bsfIYOzj5W2i8o1AdJI02-6lSSv9SwaPyS_56I2RC4OSfbXFy86e5oA6ppchrQfpBg"/></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 bg-surface"><div class="flex flex-col w-full px-margin pb-space-xl space-y-space-md">
+<!-- Floating Toast / Feedback Feedback simulation -->
+<div class="hidden fixed bottom-6 left-4 right-4 z-50 p-space-md rounded-xl bg-inverse-surface text-inverse-on-surface shadow-xl flex items-center justify-between transition-all duration-300" id="statusToast">
+<div class="flex items-center space-x-space-sm">
+<span class="material-symbols-outlined text-secondary-fixed">check_circle</span>
+<span class="font-body-sm text-body-sm text-inverse-on-surface font-semibold" id="toastMsg">Enlace copiado al portapapeles</span>
+</div>
+<button class="text-inverse-on-surface hover:opacity-80" onclick="document.getElementById('statusToast').classList.add('hidden')">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- 1. Top Sub-header Context / Modal Actions Bar -->
+<div class="flex items-center justify-between pt-space-xs">
+<div class="flex flex-col">
+<div class="flex items-center space-x-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">Boleta Electrónica</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-label-badge text-label-badge font-bold">TRIBUTARIA</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Folio N° 492019 • Pedido #ORD-2024-8812</p>
+</div>
+<div class="flex items-center space-x-space-xs">
+<button aria-label="Compartir Boleta" class="w-10 h-10 rounded-xl bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shadow-sm" onclick="shareBoleta()">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+<button aria-label="Descargar PDF" class="w-10 h-10 rounded-xl bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shadow-sm" onclick="downloadPDF()">
+<span class="material-symbols-outlined text-[20px]">file_download</span>
+</button>
+</div>
+</div>
+<!-- 2. Fast Actions & Compliance Status Pill -->
+<div class="bg-surface-container-lowest rounded-xl p-space-sm shadow-sm space-y-space-sm">
+<div class="flex items-center justify-between px-space-xs">
+<div class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-secondary-container/40">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-badge text-label-badge text-secondary font-bold uppercase tracking-wider">Documento Válido en SII</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Chile • DTE Oficial</span>
+</div>
+<div class="grid grid-cols-2 gap-space-sm pt-1">
+<button class="flex items-center justify-center space-x-1.5 bg-primary-container text-on-primary py-2.5 px-3 rounded-xl shadow hover:bg-primary transition-all active:scale-[0.98]" onclick="downloadPDF()">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span class="font-label-md text-label-md text-on-primary font-semibold">PDF (145 KB)</span>
+</button>
+<button class="flex items-center justify-center space-x-1.5 bg-surface-container-high text-on-surface py-2.5 px-3 rounded-xl hover:bg-surface-container-highest transition-all active:scale-[0.98]" onclick="emailBoleta()">
+<span class="material-symbols-outlined text-[18px]">mail</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Enviar Correo</span>
+</button>
+</div>
+</div>
+<!-- 3. Official Tax Document Canvas (Paper-like view) -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-md shadow-md space-y-space-md relative overflow-hidden">
+<!-- Top Watermark Decor -->
+<div class="absolute -right-8 -top-8 w-28 h-28 bg-surface-container-low rounded-full pointer-events-none opacity-40"></div>
+<!-- Official Red Box & Issuer Section -->
+<div class="flex flex-col space-y-space-md">
+<!-- SII Red Stamp Box -->
+<div class="self-end w-full max-w-[210px] p-2.5 bg-error-container/20 rounded-lg text-center flex flex-col items-center justify-center space-y-0.5">
+<span class="font-label-md text-label-md font-bold text-error">R.U.T.: 76.842.190-3</span>
+<span class="font-headline-sm text-headline-sm font-extrabold text-error tracking-tight uppercase">BOLETA ELECTRÓNICA</span>
+<span class="font-price-card text-price-card font-bold text-error tracking-wider">N° 492019</span>
+<span class="font-body-sm text-body-sm text-error font-medium uppercase">S.I.I. - SANTIAGO ORIENTE</span>
+</div>
+<!-- Issuer Details -->
+<div class="flex flex-col space-y-1">
+<div class="flex items-center space-x-2">
+<span class="w-2.5 h-2.5 rounded-full bg-primary-container"></span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">MITIENDA RETAIL SPA</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant font-medium leading-relaxed">
+          Giro: VENTA AL POR MENOR DE EQUIPOS Y ARTÍCULOS ELECTRÓNICOS Y DEL HOGAR
+        </p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Casa Matriz: Av. Providencia 1370, Of. 802, Providencia, Santiago
+        </p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          contacto@mitienda.cl • +56 2 2940 3300
+        </p>
+</div>
+</div>
+<!-- Buyer & Sale Reference Information Card -->
+<div class="bg-surface-container-low rounded-xl p-space-sm space-y-space-xs text-on-surface">
+<div class="flex justify-between items-center py-1">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Fecha de Emisión:</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">12 Octubre 2024 - 16:42 hrs</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Orden de Venta:</span>
+<span class="font-label-md text-label-md text-primary font-bold">#ORD-2024-8812</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Medio de Pago:</span>
+<span class="font-body-sm text-body-sm text-on-surface text-right font-medium">Webpay Plus / Débito (Aut. 592810)</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Receptor:</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Camila Morales</span>
+</div>
+<div class="flex justify-between items-start py-1">
+<span class="font-body-sm text-body-sm text-on-surface-variant shrink-0">Despacho:</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-right max-w-[200px] leading-tight">Los Leones 1245, Depto 602, Providencia, RM</span>
+</div>
+</div>
+<!-- 4. Itemized Product Detail Table -->
+<div class="space-y-space-xs">
+<div class="font-label-md text-label-md font-bold text-on-surface uppercase tracking-wide px-1">Detalle de Productos</div>
+<div class="space-y-2">
+<!-- Item 1 -->
+<div class="p-space-sm bg-surface-container-low rounded-xl flex items-center justify-between">
+<div class="flex flex-col max-w-[62%]">
+<span class="font-label-md text-label-md text-on-surface font-semibold leading-snug">Teclado Mecánico RGB Pro</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">SKU: TEC-MEC-881 • 1 unid x $54.990</span>
+</div>
+<div class="text-right">
+<span class="font-price-card text-price-card text-on-surface font-bold">$54.990</span>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="p-space-sm bg-surface-container-low rounded-xl flex items-center justify-between">
+<div class="flex flex-col max-w-[62%]">
+<span class="font-label-md text-label-md text-on-surface font-semibold leading-snug">Mouse Ergonómico Inalámbrico</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">SKU: TEC-MOU-204 • 1 unid x $24.990</span>
+</div>
+<div class="text-right">
+<span class="font-price-card text-price-card text-on-surface font-bold">$24.990</span>
+</div>
+</div>
+<!-- Item 3: Shipping -->
+<div class="p-space-sm bg-surface-container-low rounded-xl flex items-center justify-between">
+<div class="flex flex-col max-w-[62%]">
+<span class="font-label-md text-label-md text-on-surface font-semibold leading-snug">Envío Express Next-Day</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Chilexpress prioritario</span>
+</div>
+<div class="text-right">
+<span class="font-price-card text-price-card text-on-surface font-bold">$5.010</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 5. Tax Breakdown & Final Totals -->
+<div class="bg-surface-container-low rounded-xl p-space-md space-y-2">
+<div class="flex justify-between items-center text-on-surface-variant">
+<span class="font-body-sm text-body-sm">Subtotal Neto:</span>
+<span class="font-label-md text-label-md text-on-surface font-medium">$71.420</span>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant">
+<span class="font-body-sm text-body-sm">IVA (19%):</span>
+<span class="font-label-md text-label-md text-on-surface font-medium">$13.570</span>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant">
+<span class="font-body-sm text-body-sm">Descuento Promocional:</span>
+<span class="font-label-md text-label-md text-secondary font-medium">-$0</span>
+</div>
+<div class="pt-2">
+<div class="p-space-sm bg-primary-container rounded-xl flex items-center justify-between text-on-primary shadow-sm">
+<div class="flex flex-col">
+<span class="font-label-badge text-label-badge uppercase tracking-wider text-on-primary-container font-semibold">Total Cancelado</span>
+<span class="font-price-hero text-price-hero text-on-primary font-extrabold">$84.990</span>
+</div>
+<span class="px-2.5 py-1 rounded-full bg-on-primary/10 text-on-primary font-label-badge text-label-badge font-bold">CLP</span>
+</div>
+</div>
+</div>
+<!-- 6. SII Electronic Stamp (TED Simulation) -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col items-center text-center space-y-2.5">
+<div class="font-label-md text-label-md font-bold text-on-surface uppercase tracking-tight">Timbre Electrónico S.I.I.</div>
+<!-- Realistic SVG PDF417 2D Barcode representation -->
+<div class="p-2 bg-surface-container-lowest rounded-lg shadow-sm w-full max-w-[260px] flex justify-center items-center">
+<svg class="w-full h-14 text-on-surface" fill="currentColor" viewbox="0 0 280 60">
+<!-- Outer start patterns -->
+<rect height="60" width="4" x="0" y="0"></rect>
+<rect height="60" width="2" x="6" y="0"></rect>
+<rect height="60" width="6" x="10" y="0"></rect>
+<!-- Clustered data barcode bands simulating 2D PDF417 -->
+<rect height="60" width="3" x="20" y="0"></rect>
+<rect height="30" width="5" x="25" y="0"></rect>
+<rect height="26" width="2" x="25" y="34"></rect>
+<rect height="52" width="7" x="33" y="4"></rect>
+<rect height="60" width="2" x="43" y="0"></rect>
+<rect height="40" width="6" x="47" y="10"></rect>
+<rect height="60" width="4" x="56" y="0"></rect>
+<rect height="28" width="3" x="63" y="0"></rect>
+<rect height="28" width="5" x="63" y="32"></rect>
+<rect height="56" width="2" x="71" y="2"></rect>
+<rect height="60" width="8" x="76" y="0"></rect>
+<rect height="42" width="3" x="87" y="0"></rect>
+<rect height="60" width="5" x="93" y="0"></rect>
+<rect height="44" width="4" x="101" y="8"></rect>
+<rect height="60" width="2" x="108" y="0"></rect>
+<rect height="60" width="6" x="113" y="0"></rect>
+<rect height="50" width="4" x="122" y="5"></rect>
+<rect height="60" width="3" x="129" y="0"></rect>
+<rect height="30" width="7" x="135" y="0"></rect>
+<rect height="25" width="4" x="135" y="35"></rect>
+<rect height="60" width="3" x="145" y="0"></rect>
+<rect height="60" width="5" x="151" y="0"></rect>
+<rect height="38" width="2" x="159" y="12"></rect>
+<rect height="60" width="6" x="164" y="0"></rect>
+<rect height="40" width="3" x="173" y="0"></rect>
+<rect height="60" width="5" x="179" y="0"></rect>
+<rect height="60" width="2" x="187" y="0"></rect>
+<rect height="48" width="7" x="192" y="6"></rect>
+<rect height="60" width="3" x="202" y="0"></rect>
+<rect height="60" width="6" x="208" y="0"></rect>
+<rect height="40" width="2" x="217" y="0"></rect>
+<rect height="60" width="5" x="222" y="0"></rect>
+<rect height="52" width="4" x="230" y="4"></rect>
+<rect height="60" width="3" x="237" y="0"></rect>
+<rect height="60" width="6" x="243" y="0"></rect>
+<rect height="60" width="2" x="252" y="0"></rect>
+<rect height="60" width="5" x="257" y="0"></rect>
+<!-- Outer end pattern -->
+<rect height="60" width="6" x="265" y="0"></rect>
+<rect height="60" width="2" x="273" y="0"></rect>
+<rect height="60" width="3" x="277" y="0"></rect>
+</svg>
+</div>
+<div class="space-y-0.5">
+<p class="font-label-badge text-label-badge font-bold text-on-surface">Res. Ex. N° 80 de 2014</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-[240px]">
+          Verifique validez y autenticidad del documento tributario en <span class="text-primary font-semibold">www.sii.cl</span>
+</p>
+</div>
+</div>
+</div>
+<!-- 7. Bottom Auxiliary Actions & Legal Guidance -->
+<div class="space-y-space-sm pt-space-xs">
+<div class="grid grid-cols-2 gap-space-sm">
+<button class="flex items-center justify-center space-x-1.5 p-3 rounded-xl bg-surface-container-lowest text-on-surface shadow-sm hover:bg-surface-container transition-all" onclick="window.print()">
+<span class="material-symbols-outlined text-[20px] text-primary">print</span>
+<span class="font-label-md text-label-md font-semibold">Imprimir</span>
+</button>
+<button class="flex items-center justify-center space-x-1.5 p-3 rounded-xl bg-surface-container-lowest text-on-surface shadow-sm hover:bg-surface-container transition-all" onclick="requestFactura()">
+<span class="material-symbols-outlined text-[20px] text-primary">domain</span>
+<span class="font-label-md text-label-md font-semibold">Cambiar a Factura</span>
+</button>
+</div>
+<button class="w-full flex items-center justify-center space-x-1.5 py-2.5 text-on-surface-variant hover:text-error transition-colors" onclick="reportIssue()">
+<span class="material-symbols-outlined text-[18px]">help_outline</span>
+<span class="font-body-sm text-body-sm font-medium">¿Problemas con tu boleta? Contáctanos aquí</span>
+</button>
+<div class="p-space-sm rounded-xl bg-surface-container-low text-center">
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">
+        El IVA de esta boleta no otorga derecho a crédito fiscal. Documento tributario emitido según normativa del Servicio de Impuestos Internos de Chile.
+      </p>
+</div>
+</div>
+</div>
+<script>
+  function showToast(msg) {
+    const toast = document.getElementById('statusToast');
+    const label = document.getElementById('toastMsg');
+    label.innerText = msg;
+    toast.classList.remove('hidden');
+    setTimeout(() => {
+      toast.classList.add('hidden');
+    }, 3200);
+  }
+
+  function downloadPDF() {
+    showToast('Generando y descargando Boleta_492019.pdf...');
+  }
+
+  function shareBoleta() {
+    if (navigator.share) {
+      navigator.share({
+        title: 'Boleta Electrónica MiTienda Folio 492019',
+        text: 'Boleta tributaria de compra #ORD-2024-8812 en MiTienda',
+        url: window.location.href,
+      }).catch(() => {
+        showToast('Enlace copiado al portapapeles');
+      });
+    } else {
+      showToast('Enlace copiado al portapapeles');
+    }
+  }
+
+  function emailBoleta() {
+    showToast('Boleta enviada a camila.morales@email.com');
+  }
+
+  function requestFactura() {
+    showToast('Abriendo solicitud de Factura con RUT empresa...');
+  }
+
+  function reportIssue() {
+    showToast('Conectando con Soporte al Cliente...');
+  }
+</script></main></body></html>

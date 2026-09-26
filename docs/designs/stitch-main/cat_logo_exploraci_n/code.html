@@ -1,0 +1,364 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"><meta content="mobile_tab" name="shell-type"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base {html, body {width: 100%; margin: 0; padding: 0;}body {overscroll-behavior-y: none;}.pb-safe {padding-bottom: env(safe-area-inset-bottom, 0px);}.pt-safe {padding-top: env(safe-area-inset-top, 0px);}}::-webkit-scrollbar {display: none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { colors: { 'error': '#ba1a1a', 'on-error-container': '#93000a', 'tertiary-fixed-dim': '#ffb95f', 'secondary-fixed-dim': '#4edea3', 'on-error': '#ffffff', 'primary-fixed': '#dde1ff', 'outline': '#757684', 'surface-bright': '#faf8ff', 'on-background': '#131b2e', 'error-container': '#ffdad6', 'background': '#faf8ff', 'on-secondary': '#ffffff', 'surface-container-low': '#f2f3ff', 'on-surface-variant': '#444653', 'on-tertiary-fixed-variant': '#653e00', 'on-primary-container': '#a8b8ff', 'surface-tint': '#3755c3', 'secondary-fixed': '#6ffbbe', 'inverse-primary': '#b8c4ff', 'on-secondary-fixed': '#002113', 'on-primary': '#ffffff', 'surface-container-high': '#e2e7ff', 'primary-fixed-dim': '#b8c4ff', 'inverse-on-surface': '#eef0ff', 'surface-variant': '#dae2fd', 'on-secondary-container': '#00714d', 'surface-dim': '#d2d9f4', 'primary': '#00288e', 'surface': '#faf8ff', 'primary-container': '#1e40af', 'tertiary-fixed': '#ffddb8', 'tertiary-container': '#6b4200', 'on-tertiary': '#ffffff', 'on-tertiary-fixed': '#2a1700', 'secondary': '#006c49', 'surface-container': '#eaedff', 'surface-container-lowest': '#ffffff', 'on-primary-fixed-variant': '#173bab', 'on-surface': '#131b2e', 'on-tertiary-container': '#ffa929', 'secondary-container': '#6cf8bb', 'inverse-surface': '#283044', 'surface-container-highest': '#dae2fd', 'outline-variant': '#c4c5d5', 'on-primary-fixed': '#001453', 'on-secondary-fixed-variant': '#005236', 'tertiary': '#4c2e00' }, borderRadius: { 'DEFAULT': '0.25rem', 'lg': '0.5rem', 'xl': '0.75rem', 'full': '9999px' }, spacing: { 'space-sm': '0.5rem', 'space-md': '1rem', 'gutter-sm': '0.75rem', 'space-xs': '0.25rem', 'gutter': '1rem', 'space-xl': '2rem', 'space-lg': '1.5rem', 'margin': '1rem', 'margin-desktop': '3rem', 'margin-tablet': '2rem' }, fontFamily: { 'body-md': ['Plus Jakarta Sans'], 'headline-sm': ['Plus Jakarta Sans'], 'price-card': ['Plus Jakarta Sans'], 'headline-lg': ['Plus Jakarta Sans'], 'price-hero': ['Plus Jakarta Sans'], 'display-hero': ['Plus Jakarta Sans'], 'label-md': ['Inter'], 'body-lg': ['Plus Jakarta Sans'], 'headline-md': ['Plus Jakarta Sans'], 'label-badge': ['Inter'], 'body-sm': ['Plus Jakarta Sans'], 'label-lg': ['Inter'] }, fontSize: { 'body-md': ['14px', { lineHeight: '20px', fontWeight: '400' }], 'headline-sm': ['18px', { lineHeight: '24px', fontWeight: '600' }], 'price-card': ['18px', { lineHeight: '22px', fontWeight: '700' }], 'headline-lg': ['28px', { lineHeight: '34px', letterSpacing: '-0.015em', fontWeight: '700' }], 'price-hero': ['24px', { lineHeight: '28px', letterSpacing: '-0.01em', fontWeight: '800' }], 'display-hero': ['36px', { lineHeight: '44px', letterSpacing: '-0.02em', fontWeight: '800' }], 'label-md': ['12px', { lineHeight: '16px', letterSpacing: '0.02em', fontWeight: '600' }], 'body-lg': ['16px', { lineHeight: '24px', fontWeight: '400' }], 'headline-md': ['22px', { lineHeight: '28px', letterSpacing: '-0.01em', fontWeight: '700' }], 'label-badge': ['11px', { lineHeight: '14px', letterSpacing: '0.04em', fontWeight: '700' }], 'body-sm': ['12px', { lineHeight: '16px', fontWeight: '400' }], 'label-lg': ['14px', { lineHeight: '18px', letterSpacing: '0.01em', fontWeight: '600' }] } } } };</script></head><body class="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-gutter flex items-center justify-between"><div class="flex items-center gap-space-sm min-h-[44px]"><img alt="MiTienda Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1Wva-JDAVaReu3igEiUYpMoGdvBWYwe4ENczhivSjIABtj_KfILgts8BxfAOupion5A54Ydrdq5izxRHR610FNqlOtir_I_7aX_ulW84qW0WCJ5Eas9ywUswG_PJG25UzXtNaMH6trLmV0DM3ApxXVR278HBOH5XyI1KihWtSKkAaepKk2QZt-lUB3O6nL7YZjbg_PSBz88Qz_mJ2AoLsBUmVvHsG6Vkoc0EBKSTfc7fDAbvluOVR_t"><span class="font-headline-sm text-headline-sm text-primary tracking-tight font-bold">MiTienda</span></div><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs bg-surface-container-low px-space-sm py-space-xs rounded-full min-h-[44px]"><span class="font-label-badge text-label-badge bg-primary-container text-on-primary px-space-xs py-[2px] rounded-full uppercase">Camila</span><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgzIdch4zODl51RlHMbuhB-J4_5HsIiEnlm6-7rJE4nJ1cPDhoallnCiPAnLjM3qLJm38sIUiC64x_aQXcnu0xgq5rU1WqmDkm2MBnHviGFpVdNsmtow4-O7HB4o2YfdLBaHDZ8nsfzVkCgjs6Xbk-ZMPhqSQtd1Bnv0CEqKSus0Hy_b1w-bsfIYOzj5W2i8o1AdJI02-6lSSv9SwaPyS_56I2RC4OSfbXFy86e5oA6ppchrQfpBg"></div><a aria-label="Carrito de compras" class="relative flex items-center justify-center w-11 h-11 rounded-full text-on-surface-variant hover:text-primary transition-colors" data-path="mi-carrito" href="#"><span class="material-symbols-outlined">shopping_bag</span><span class="absolute top-1.5 right-1.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-secondary text-on-secondary font-label-badge text-[10px] font-bold leading-none">3</span></a></div></div><div class="hidden"><h1 class="font-headline-sm text-headline-sm">Inicio / Catálogo</h1></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-20 bg-surface"><div class="flex flex-col w-full">
+<!-- Search & Filter Bar -->
+<section class="px-margin pt-space-md pb-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="flex-1 flex items-center bg-surface-container-lowest rounded-xl shadow-sm px-space-md py-space-xs transition-shadow focus-within:shadow-md">
+<span class="material-symbols-outlined text-outline text-[22px]">search</span>
+<input class="w-full bg-transparent font-body-md text-body-md text-on-surface placeholder:text-outline px-space-xs py-2 focus:outline-none" placeholder="Buscar productos, marcas y más..." type="text">
+<button aria-label="Limpiar búsqueda" class="flex items-center justify-center p-1 text-outline hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">mic</span>
+</button>
+</div>
+<button aria-label="Abrir filtros" class="h-11 w-11 flex-shrink-0 flex items-center justify-center rounded-xl bg-surface-container-lowest text-on-surface-variant shadow-sm hover:text-primary active:scale-95 transition-all" id="filter-trigger-btn" type="button">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+</button>
+</div>
+</section>
+<!-- Categories Lateral Slider -->
+<section class="pt-space-xs pb-space-sm">
+<div class="flex items-center overflow-x-auto no-scrollbar px-margin gap-space-sm scroll-smooth">
+<!-- Todos (Active) -->
+<button class="flex items-center gap-space-xs bg-primary text-on-primary px-space-md py-space-xs rounded-full shadow-sm flex-shrink-0 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">apps</span>
+<span class="font-label-lg text-label-lg">Todos</span>
+</button>
+<!-- Tecnología -->
+<button class="flex items-center gap-space-xs bg-surface-container-lowest text-on-surface-variant px-space-md py-space-xs rounded-full shadow-sm hover:bg-surface-container flex-shrink-0 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px] text-primary">headphones</span>
+<span class="font-label-lg text-label-lg text-on-surface">Tecnología</span>
+<span class="font-label-badge text-label-badge bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded-full">18</span>
+</button>
+<!-- Hogar -->
+<button class="flex items-center gap-space-xs bg-surface-container-lowest text-on-surface-variant px-space-md py-space-xs rounded-full shadow-sm hover:bg-surface-container flex-shrink-0 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px] text-primary">coffee_maker</span>
+<span class="font-label-lg text-label-lg text-on-surface">Hogar</span>
+<span class="font-label-badge text-label-badge bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded-full">12</span>
+</button>
+<!-- Ropa & Moda -->
+<button class="flex items-center gap-space-xs bg-surface-container-lowest text-on-surface-variant px-space-md py-space-xs rounded-full shadow-sm hover:bg-surface-container flex-shrink-0 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px] text-primary">checkroom</span>
+<span class="font-label-lg text-label-lg text-on-surface">Ropa &amp; Moda</span>
+<span class="font-label-badge text-label-badge bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded-full">24</span>
+</button>
+<!-- Deportes -->
+<button class="flex items-center gap-space-xs bg-surface-container-lowest text-on-surface-variant px-space-md py-space-xs rounded-full shadow-sm hover:bg-surface-container flex-shrink-0 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px] text-primary">fitness_center</span>
+<span class="font-label-lg text-label-lg text-on-surface">Deportes</span>
+<span class="font-label-badge text-label-badge bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded-full">9</span>
+</button>
+</div>
+</section>
+<!-- Filter Chips / Toggles -->
+<section class="px-margin py-space-xs">
+<div class="flex items-center justify-between gap-space-xs overflow-x-auto no-scrollbar">
+<div class="flex items-center gap-space-xs flex-shrink-0">
+<!-- On Sale Active Pill -->
+<button class="flex items-center gap-1.5 bg-secondary text-on-secondary px-space-sm py-1.5 rounded-lg shadow-sm font-label-badge text-label-badge tracking-wide uppercase transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="">En Oferta</span>
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+<!-- Featured Filter Pill -->
+<button class="flex items-center gap-1.5 bg-surface-container-lowest text-on-surface-variant px-space-sm py-1.5 rounded-lg shadow-sm font-label-md text-label-md hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[14px] text-tertiary-fixed-variant">star</span>
+<span class="">Destacados</span>
+</button>
+</div>
+<!-- Sorting Menu Trigger -->
+<button class="flex items-center gap-1 bg-surface-container-lowest text-on-surface-variant px-space-sm py-1.5 rounded-lg shadow-sm font-label-md text-label-md flex-shrink-0 hover:text-primary transition-colors">
+<span class="">Precio: Menor</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+</div>
+</section>
+<!-- Featured Promotional Campaign Banner -->
+<section class="px-margin pt-space-xs pb-space-xs"><div class="bg-secondary-fixed text-on-secondary-fixed rounded-xl px-space-md py-space-sm flex items-center justify-between shadow-sm border border-secondary-fixed-dim"><div class="flex items-center gap-space-xs"><span class="text-[18px]">🎉</span><div class="flex flex-col"><div class="flex items-center gap-1.5 flex-wrap"><span class="font-label-lg text-[13px] font-bold text-on-secondary-fixed">Cupón activo: <span class="bg-surface-container-lowest px-1.5 py-0.5 rounded text-secondary font-extrabold tracking-wide text-[12px]">GRACIAS-CAMILA15</span></span><span class="bg-secondary text-on-secondary text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">15% OFF</span></div><p class="font-body-sm text-[11px] text-on-secondary-fixed-variant mt-0.5">Aplicado automáticamente en tu carrito para Camila</p></div></div><a href="#" data-path="mi-carrito" class="flex-shrink-0 inline-flex items-center gap-0.5 bg-secondary text-on-secondary px-space-sm py-1 rounded-lg font-label-badge text-[11px] font-bold shadow-sm active:scale-95 transition-transform"><span class="">Ver Carrito</span><span class="material-symbols-outlined text-[14px]">arrow_forward</span></a></div></section><section class="px-margin pt-space-sm pb-space-md">
+<div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary-container to-secondary p-space-md text-on-primary shadow-md">
+<!-- Decorative background blur orb -->
+<div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-secondary-fixed opacity-30 blur-2xl pointer-events-none"></div>
+<div class="relative z-10 flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-md font-label-badge text-label-badge uppercase tracking-wider font-bold">
+            Flash Sale
+          </span>
+<!-- Dynamic Countdown Pill -->
+<div class="flex items-center gap-1 bg-surface-container-lowest/20 backdrop-blur-md px-2 py-0.5 rounded-full font-label-badge text-[11px] font-bold">
+<span class="material-symbols-outlined text-[13px]">timer</span>
+<span id="countdown-timer" class="">07h : 20m : 25s</span>
+</div>
+</div>
+<div class="mt-1">
+<h2 class="font-headline-md text-headline-md leading-tight font-extrabold text-on-primary">
+            Mega Ofertas de la Semana
+          </h2>
+<p class="font-body-sm text-body-sm text-on-primary/90 mt-0.5">
+            Ahorra hasta un <span class="font-bold text-secondary-fixed">40% OFF</span> en selecciones premium.
+          </p>
+</div>
+<div class="mt-2 flex items-center justify-between pt-1">
+<span class="font-label-badge text-label-badge text-on-primary-container tracking-wide">Válido hasta agotar existencias</span>
+<span class="inline-flex items-center font-label-md text-label-md text-on-primary font-bold gap-0.5">
+            Explorar todo <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Products Section Title -->
+<section class="px-margin pb-space-xs flex items-center justify-between">
+<div class="flex items-baseline gap-space-xs">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Catálogo Disponible</h3>
+<span class="font-label-md text-label-md text-outline">(63)</span>
+</div>
+<span class="font-label-md text-label-md text-primary font-semibold">Ver filtros</span>
+</section>
+<!-- Product 2-Column Responsive Grid -->
+<section class="px-margin pb-space-lg">
+<div class="grid grid-cols-2 gap-gutter-sm">
+<!-- Product 1: Audífonos Inalámbricos Pro ANC -->
+<article class="bg-surface-container-lowest rounded-2xl p-space-xs shadow-sm flex flex-col justify-between relative group transition-all duration-200 hover:shadow-md">
+<div>
+<!-- Image with tags container -->
+<div class="relative w-full aspect-square rounded-xl overflow-hidden bg-surface-container-low mb-space-xs">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Modern high-end matte black over-ear wireless headphones with active noise cancelling design, soft plush ear cushions, studio lighting, studio white background, clean product photography, sharp focus" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmw1MNQB-fWrXD4a3BIZU2sXvPY28WyDBjKGt2d7DNd0yNISD2M9wQMiDK3-64vaYYVkCTMkDzj4GUXqhuL1pw7DMjI6OqdOj-4o6MEZvpFGIdo_rwxieQITNplgawRDym_eZT1NFXCVVHXCYt-3q6qA5kNcOIPx3Dk063WEL19KeTOebLPaCaI31gMtLFOQya8VJ-epvsLZguw0lY-IPR7FjyVSW15MDIAGcFqADC7FkJipc84kg">
+<!-- Badges: Discount Top Left -->
+<div class="absolute top-2 left-2 flex flex-col gap-1 z-10">
+<span class="bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded-md font-label-badge text-label-badge font-extrabold shadow-sm">
+                -33%
+              </span>
+<span class="bg-primary text-on-primary px-1.5 py-0.5 rounded-md font-label-badge text-label-badge font-bold shadow-sm flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">star</span> TOP
+              </span>
+</div>
+<!-- Wishlist Heart Floating Top Right -->
+<button aria-label="Guardar en favoritos" class="wishlist-btn absolute top-2 right-2 w-8 h-8 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-on-surface-variant flex items-center justify-center shadow-sm active:scale-90 transition-all hover:text-error" type="button">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+<!-- Product Details -->
+<div class="px-1 flex flex-col">
+<span class="font-label-badge text-label-badge text-outline uppercase tracking-wider">Tecnología</span>
+<h4 class="font-body-md text-body-md text-on-surface font-semibold line-clamp-2 mt-0.5 leading-snug" title="Audífonos Inalámbricos Pro ANC">
+              Audífonos Inalámbricos Pro ANC
+            </h4>
+<!-- Prices -->
+<div class="mt-1 flex items-baseline gap-1.5 flex-wrap">
+<span class="font-price-card text-price-card text-primary font-bold">$59.990</span>
+<span class="font-body-sm text-body-sm text-outline line-through">$89.990</span>
+<span class="bg-secondary-container text-on-secondary-container px-1 py-0.5 rounded font-label-badge text-[10px] font-bold">15% OFF extra con cupón</span></div>
+<!-- Stock Status: Normal Healthy -->
+<div class="mt-1.5 flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary inline-block"></span>
+<span class="font-body-sm text-[11px] text-on-surface-variant font-medium">Stock: 8 unid. disp.</span>
+</div>
+</div>
+</div>
+<!-- Add CTA -->
+<div class="px-1 pt-space-sm pb-0.5">
+<button class="cart-add-btn w-full bg-primary-container text-on-primary h-9 rounded-xl font-label-lg text-[13px] font-semibold flex items-center justify-center gap-1 active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">add_shopping_cart</span>
+<span class="">Agregar</span>
+</button>
+</div>
+</article>
+<!-- Product 2: Cafetera Espresso Automática -->
+<article class="bg-surface-container-lowest rounded-2xl p-space-xs shadow-sm flex flex-col justify-between relative group transition-all duration-200 hover:shadow-md">
+<div>
+<!-- Image Container -->
+<div class="relative w-full aspect-square rounded-xl overflow-hidden bg-surface-container-low mb-space-xs">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Compact premium stainless steel automated espresso machine on kitchen counter with a freshly brewed cup of coffee with thick crema, warm lighting, elegant luxury aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2Ph1qIdHS50gQESq9OY-en3bp9GMe2mbdWdVH5BwEfON6cf28KyswQikytj9gVsyB_NrrjycG4FECMjCuSnYaZSKAPYJnOl62D0wFrsN6lxx6TLN52_BCZZYCr_1emzTz4G9FYaTJs_NeWms_dZyDfsFlVfMT5SsKDYkp86zjtqojmkeSOeMmdWGRcR65Y4Pxuu1-Pbe4V4D9ZGGdf8E6Xwf46mD475a_cQAx5Tzu-ld5PzByur0">
+<div class="absolute top-2 left-2 z-10">
+<span class="bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded-md font-label-badge text-label-badge font-extrabold shadow-sm">
+                -20%
+              </span>
+</div>
+<button aria-label="Guardar en favoritos" class="wishlist-btn absolute top-2 right-2 w-8 h-8 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-on-surface-variant flex items-center justify-center shadow-sm active:scale-90 transition-all hover:text-error" type="button">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+<!-- Product Details -->
+<div class="px-1 flex flex-col">
+<span class="font-label-badge text-label-badge text-outline uppercase tracking-wider">Hogar</span>
+<h4 class="font-body-md text-body-md text-on-surface font-semibold line-clamp-2 mt-0.5 leading-snug" title="Cafetera Espresso Automática">
+              Cafetera Espresso Automática
+            </h4>
+<!-- Prices -->
+<div class="mt-1 flex items-baseline gap-1.5 flex-wrap">
+<span class="font-price-card text-price-card text-primary font-bold">$119.990</span>
+<span class="font-body-sm text-body-sm text-outline line-through">$149.990</span>
+<span class="bg-secondary-container text-on-secondary-container px-1 py-0.5 rounded font-label-badge text-[10px] font-bold">15% OFF extra con cupón</span></div>
+<!-- Stock Urgency Warning -->
+<div class="mt-1.5 flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse inline-block"></span>
+<span class="font-body-sm text-[11px] text-tertiary font-bold">¡Últimas 2 unidades!</span>
+</div>
+</div>
+</div>
+<!-- Add CTA -->
+<div class="px-1 pt-space-sm pb-0.5">
+<button class="cart-add-btn w-full bg-primary-container text-on-primary h-9 rounded-xl font-label-lg text-[13px] font-semibold flex items-center justify-center gap-1 active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">add_shopping_cart</span>
+<span class="">Agregar</span>
+</button>
+</div>
+</article>
+<!-- Product 3: Zapatillas Running Flow Pro -->
+<article class="bg-surface-container-lowest rounded-2xl p-space-xs shadow-sm flex flex-col justify-between relative group transition-all duration-200 hover:shadow-md">
+<div>
+<!-- Image Container -->
+<div class="relative w-full aspect-square rounded-xl overflow-hidden bg-surface-container-low mb-space-xs">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="High-performance athletic running sneakers in vibrant electric blue and white mesh, dynamic hovering angle, athletic gear studio shoot, sharp crisp details" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJNv2HR_Phsq-QvXwZajA79bmpbf0RdNKxnuBDw8awTDRi0wM-lyh3WtiU1y3UAFw1aSABBXdBxtbYfXZnxS294JfeSRVxSGjYB5o2iZTe7TtqPh1vD1_KoyFR3GenSlkzOkoZJlhTA4IiSWMAcan812P6Rb-mLtTKbOgZRxmWAl_sQ3zlkFuzJYSB5Dw_0oG3TmuIwsi8nMTwZ8VobYp4dpE7er1L6BOvq9q85p-LJF32zPDSn-s">
+<button aria-label="Guardar en favoritos" class="wishlist-btn absolute top-2 right-2 w-8 h-8 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-on-surface-variant flex items-center justify-center shadow-sm active:scale-90 transition-all hover:text-error" type="button">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+<!-- Product Details -->
+<div class="px-1 flex flex-col">
+<span class="font-label-badge text-label-badge text-outline uppercase tracking-wider">Deportes</span>
+<h4 class="font-body-md text-body-md text-on-surface font-semibold line-clamp-2 mt-0.5 leading-snug" title="Zapatillas Running Flow Pro">
+              Zapatillas Running Flow Pro
+            </h4>
+<!-- Prices -->
+<div class="mt-1 flex items-baseline gap-1.5 flex-wrap">
+<span class="font-price-card text-price-card text-primary font-bold">$79.990</span>
+<span class="bg-secondary-container text-on-secondary-container px-1 py-0.5 rounded font-label-badge text-[10px] font-bold">15% OFF con cupón</span></div>
+<!-- Stock Status -->
+<div class="mt-1.5 flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary inline-block"></span>
+<span class="font-body-sm text-[11px] text-on-surface-variant font-medium">Stock: 15 unid.</span>
+</div>
+</div>
+</div>
+<!-- Add CTA -->
+<div class="px-1 pt-space-sm pb-0.5">
+<button class="cart-add-btn w-full bg-primary-container text-on-primary h-9 rounded-xl font-label-lg text-[13px] font-semibold flex items-center justify-center gap-1 active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">add_shopping_cart</span>
+<span class="">Agregar</span>
+</button>
+</div>
+</article>
+<!-- Product 4: Mochila Impermeable Urbana -->
+<article class="bg-surface-container-lowest rounded-2xl p-space-xs shadow-sm flex flex-col justify-between relative group transition-all duration-200 hover:shadow-md">
+<div>
+<!-- Image Container -->
+<div class="relative w-full aspect-square rounded-xl overflow-hidden bg-surface-container-low mb-space-xs">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Minimalist waterproof charcoal grey city commuter backpack with sleek magnetic buckles and laptop sleeve, styled in an urban architectural setting with natural morning light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnFtYHGax1ZCZuzm8U3Xzcj2XrUJ7BKa0-Ds8Gv8uodIGeeLQ7uxXrVnHDvFJRgdBrGIsC1AbGVJUt5yKCQWHPeTZUzE97jPBDJbOtRjsOfruSCVlBYqzvUybfilCWYofHZd9Nn_UDL91hhZHbizYY4ljj98dNOILmvOP0Fb2_cqJLcnVutrtgdRc6GtbBVSfFUY6mBzfSIDWSG_1FFhzWGWrWzH-UOZNNhESGLPgXaKXKFkC9rQk">
+<div class="absolute top-2 left-2 z-10">
+<span class="bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded-md font-label-badge text-label-badge font-extrabold shadow-sm">
+                -24%
+              </span>
+</div>
+<button aria-label="Guardar en favoritos" class="wishlist-btn absolute top-2 right-2 w-8 h-8 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-on-surface-variant flex items-center justify-center shadow-sm active:scale-90 transition-all hover:text-error" type="button">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+<!-- Product Details -->
+<div class="px-1 flex flex-col">
+<span class="font-label-badge text-label-badge text-outline uppercase tracking-wider">Ropa &amp; Moda</span>
+<h4 class="font-body-md text-body-md text-on-surface font-semibold line-clamp-2 mt-0.5 leading-snug" title="Mochila Impermeable Urbana">
+              Mochila Impermeable Urbana
+            </h4>
+<!-- Prices -->
+<div class="mt-1 flex items-baseline gap-1.5 flex-wrap">
+<span class="font-price-card text-price-card text-primary font-bold">$34.990</span>
+<span class="font-body-sm text-body-sm text-outline line-through">$45.990</span>
+<span class="bg-secondary-container text-on-secondary-container px-1 py-0.5 rounded font-label-badge text-[10px] font-bold">15% OFF extra con cupón</span></div>
+<!-- Stock Status -->
+<div class="mt-1.5 flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary inline-block"></span>
+<span class="font-body-sm text-[11px] text-on-surface-variant font-medium">Stock: 5 unid.</span>
+</div>
+</div>
+</div>
+<!-- Add CTA -->
+<div class="px-1 pt-space-sm pb-0.5">
+<button class="cart-add-btn w-full bg-primary-container text-on-primary h-9 rounded-xl font-label-lg text-[13px] font-semibold flex items-center justify-center gap-1 active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">add_shopping_cart</span>
+<span class="">Agregar</span>
+</button>
+</div>
+</article>
+</div>
+</section>
+<!-- Bottom Delight Delivery Info Ribbon -->
+<section class="px-margin pb-space-lg">
+<div class="bg-surface-container-low rounded-xl px-space-md py-space-sm flex items-center justify-center gap-space-xs text-center shadow-sm">
+<span class="material-symbols-outlined text-secondary text-[20px]">local_shipping</span>
+<p class="font-body-sm text-[12px] text-on-surface-variant font-medium">
+<span class="text-on-surface font-bold">Envío gratis</span> en compras sobre $30.000 • Devolución sin costo
+      </p>
+</div>
+</section>
+<!-- Quick Feedback Toast (Hidden by default) -->
+<aside class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-inverse-surface text-inverse-on-surface px-space-md py-space-xs rounded-full shadow-lg flex items-center gap-2 opacity-0 pointer-events-none transition-all duration-300" id="toast-message">
+<span class="material-symbols-outlined text-secondary-fixed text-[18px]">check_circle</span>
+<span class="font-label-md text-label-md">¡Producto agregado al carrito!</span>
+</aside>
+</div>
+<script>
+  // Micro-interactions & Toast Feedback
+  document.addEventListener('DOMContentLoaded', () => {
+    const toast = document.getElementById('toast-message');
+    const addBtns = document.querySelectorAll('.cart-add-btn');
+    const wishlistBtns = document.querySelectorAll('.wishlist-btn');
+
+    // Add to Cart Feedback
+    addBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!toast) return;
+        toast.classList.remove('opacity-0', 'pointer-events-none');
+        toast.classList.add('opacity-100');
+        
+        setTimeout(() => {
+          toast.classList.remove('opacity-100');
+          toast.classList.add('opacity-0', 'pointer-events-none');
+        }, 2200);
+      });
+    });
+
+    // Wishlist Toggle
+    wishlistBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const icon = btn.querySelector('.material-symbols-outlined');
+        const isFilled = icon.style.fontVariationSettings.includes("'FILL' 1");
+        if (isFilled) {
+          icon.style.fontVariationSettings = "'FILL' 0";
+          btn.classList.remove('text-error');
+          btn.classList.add('text-on-surface-variant');
+        } else {
+          icon.style.fontVariationSettings = "'FILL' 1";
+          btn.classList.add('text-error');
+          btn.classList.remove('text-on-surface-variant');
+        }
+      });
+    });
+
+    // Flash countdown simulation
+    let seconds = 11;
+    let minutes = 24;
+    let hours = 8;
+    const timerElem = document.getElementById('countdown-timer');
+    if (timerElem) {
+      setInterval(() => {
+        if (seconds > 0) {
+          seconds--;
+        } else {
+          seconds = 59;
+          if (minutes > 0) {
+            minutes--;
+          } else {
+            minutes = 59;
+            if (hours > 0) hours--;
+          }
+        }
+        const s = seconds < 10 ? '0' + seconds : seconds;
+        const m = minutes < 10 ? '0' + minutes : minutes;
+        const h = hours < 10 ? '0' + hours : hours;
+        timerElem.textContent = `${h}h : ${m}m : ${s}s`;
+      }, 1000);
+    }
+  });
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container-lowest/95 backdrop-blur-xl shadow-[0_-2px_12px_rgba(0,0,0,0.04)]" data-active-classes="text-primary font-bold"><div class="flex justify-around items-center h-16 px-gutter-sm"><a class="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-space-xs text-on-surface-variant hover:text-on-surface transition-colors" data-path="inicio-catalogo" href="#"><span class="material-symbols-outlined text-[24px]">grid_view</span><span class="font-label-md text-[11px]">Inicio / Catálogo</span></a><a class="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-space-xs text-on-surface-variant hover:text-on-surface transition-colors" data-path="ofertas" href="#"><span class="material-symbols-outlined text-[24px]">local_offer</span><span class="font-label-md text-[11px]">Ofertas</span></a><a class="relative flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-space-xs text-on-surface-variant hover:text-on-surface transition-colors" data-path="mi-carrito" href="#"><div class="relative"><span class="material-symbols-outlined text-[24px]">shopping_bag</span><span class="absolute -top-1 -right-2 flex items-center justify-center w-4 h-4 rounded-full bg-secondary text-on-secondary font-label-badge text-[10px] font-bold leading-none">3</span></div><span class="font-label-md text-[11px]">Mi Carrito</span></a><a class="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-space-xs text-on-surface-variant hover:text-on-surface transition-colors" data-path="mis-ordenes" href="#"><span class="material-symbols-outlined text-[24px]">inventory_2</span><span class="font-label-md text-[11px]">Mis Órdenes</span></a></div></nav>
+
+</body></html>
