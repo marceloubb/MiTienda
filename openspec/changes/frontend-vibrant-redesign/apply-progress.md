@@ -1,9 +1,9 @@
 # Apply Progress — frontend-vibrant-redesign
 
-Delivery: `auto-chain` / `feature-branch-chain`. PRs are the orchestrator's job — none created.
-Review budget: 400 changed lines per slice.
+Delivery: `auto-chain` / `stacked-to-main`. PRs are the orchestrator's job — none created.
+Review budget: 400 changed lines per work unit.
 
-Slices 1–4 complete. Task 1.4 (the last remaining item of slice 1) complete. Slice 5 (2FA) not started.
+Slices 1–5 complete — all 23 tasks checked. Awaiting final verification. Three follow-ups are recorded below and are not blockers for `verify`: the global `totp_required` challenge, `--color-error-container` missing from `@theme inline`, and enabling `DJANGO_2FA_ENFORCED`.
 
 ## Cumulative task state
 
@@ -16,7 +16,7 @@ Slices 1–4 complete. Task 1.4 (the last remaining item of slice 1) complete. S
 | 2.1–2.5 `OrderEvent` model, migration, views, serializers, tests | [x] | slice 2 |
 | 3.1–3.6 Customer routes (home, catalog, detail, cart, checkout, orders, tracking) | [x] | slice 3 |
 | 4.1–4.4 Staff routes (admin/orders, bodega, despacho, admin/staff, profile, register) | [x] | slice 4 |
-| 5.1–5.4 Admin 2FA + login TOTP | [ ] | slice 5 (not started) |
+| 5.1–5.4 Admin 2FA + login TOTP | [x] | slice 5 |
 
 ---
 
@@ -133,9 +133,61 @@ None. The design's Design-System table (ramp `.25/.75/1/1.5rem` → cards `round
 
 ## Remaining work
 
-- [ ] 5.1 `lib/api.ts`: `APIError.code`, `totp_required` interception, TOTP code helpers, `X-TOTP` header rules, `getProfile({totp?})`
-- [ ] 5.2 `enroll2FA()` / `confirm2FA(id, code)`
-- [ ] 5.3 `app/login/page.tsx` TOTP challenge step
-- [ ] 5.4 NEW `app/admin/2fa/page.tsx` under `RequireRole ["admin"]`
+- [ ] 5.4 QR render on `/admin/2fa` — the only open item in the whole change.
 
-Next recommended: `apply` for slice 5.
+---
+
+## Slice 5 — 2FA enroll + login TOTP (branch `feat/vibrant-redesign-slice5-2fa`)
+
+Frontend only. **No file under `backend/` was created, modified or deleted** (`git status --porcelain` shows only `frontend/` paths).
+
+- [x] 5.1 `frontend/lib/api.ts` — `APIError.code` (machine-readable id, e.g. `totp_required`); module-level `totpCode` with `setTOTPCode` / `clearTOTPCode` / `getTOTPCode`; `isTOTPCodeRequired(error)` guard; `performFetch` attaches `X-TOTP` from a helper that **never** returns it for `/users/login/` or `/users/register/`; `fetchAPI` intercepts `totp_required` **before** the refresh policy; `refreshToken()` sends the stored code; `logout()` clears it; `getProfile({totp?})` sends a one-off code. `FetchOptions` gained `totpCode?`, destructured out before `fetch` so it never reaches the payload.
+- [x] 5.2 `enroll2FA()` → POST `/users/2fa/enroll/`, `confirm2FA(deviceId, code)` → POST `/users/2fa/confirm/`, both through `fetchAPI`, plus the exported `TwoFAEnrollment` type.
+- [x] 5.3 `frontend/app/login/page.tsx` — `apiLogin` → `getProfile()` probe → on `totp_required` the `TOTPChallengeStep` renders. A valid code re-probes with `X-TOTP` and establishes the session with the profile that probe returned; a wrong code clears the stored code and keeps the step open. Unaffected users are logged in by the same probe with no challenge.
+- [x] 5.4 `frontend/app/admin/2fa/page.tsx` — NEW page under `RequireRole ["admin"]`, plus `TwoFAEnrollView`, `TOTPSecretCard`, `TOTPConfirmForm`. Enroll → QR + Base32 secret + copy → confirm; invalid code surfaces the backend message and keeps the device pending; a 400 on enroll renders the backend's already-confirmed message; non-admins are redirected by the existing guard. The QR renders client-side via `qrcode.react`'s `QRCodeSVG` (level M, 4-module quiet zone, literal `#131b2e` on `#ffffff`) — maintainer-approved dependency closing the spec MUST.
+
+### Backend contract this slice was written against (read, not guessed)
+
+`backend/users/urls.py` (`2fa/enroll/`, `2fa/confirm/`), `views.py` `TwoFAEnrollView`/`TwoFAConfirmView` (201 `{device_id, secret, provisioning_uri}`; 200 `{confirmed: true}`; 400 `{error: …}`; `[IsAuthenticated, IsAdmin]` → 403), `authentication.py` `_validate_expiry_and_2fa` (401 `{detail: 'Código TOTP requerido', code: 'totp_required'}`), and `tests.py` `TwoFAEnrollConfirmTests` / `TwoFAGateTests` (lines 614–728) as the executable spec. `settings.py:55` — `DJANGO_2FA_ENFORCED` is **default off**, env-driven; untouched.
+
+### Frontend-vs-backend discrepancies found
+
+1. **`{error: …}` bodies were being swallowed.** Both 2FA views and `RefreshTokenView` answer `{'error': '…'}`, but `performFetch` only read `detail` and `message`, so every one of those responses surfaced the literal fallback `'Error en la petición'`. Fixed in 5.1 by reading `error` alongside `message`; without it, task 5.2's "carries the backend's 400 message" and task 5.4's "surface the backend error" are unimplementable.
+2. **`performFetch` ignored `X-TOTP` entirely** (no header was ever built) — expected, it is the task.
+3. **`OrderEventType` / `OrderEvent` / `Order.events` already existed** in `lib/api.ts` from slice 3 and are correct against `OrderEventSerializer` (verified, not duplicated, not renamed).
+4. **No QR capability existed in the dependency graph.** `package.json` had no QR package and none was present in `node_modules`; the only QR thing in the frontend was the lucide `QrCode` icon. `design.md` had already chosen a `qrcode` package. Resolved by maintainer decision: `qrcode.react@4.2.0` added, rendering SVG inline (no canvas, no data-URI round-trip, no third-party image service that would ship the TOTP secret off-host).
+
+### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | `npm run lint` (workdir `frontend/`) — exit 0, `✖ 4 problems (0 errors, 4 warnings)`; the 4 are the pre-existing `@next/next/no-img-element` warnings at `app/cart/page.tsx:157`, `app/checkout/page.tsx:594`, `app/products/[id]/page.tsx:226`, `components/ProductCard.tsx:82` — byte-identical to slices 1–4 and none in a file this slice touched |
+| Runtime harness command/scenario and exact result | `npm run build` (workdir `frontend/`) — exit 0, `✓ Compiled successfully in 2.1s`, `Finished TypeScript in 3.9s`, **16 routes** emitted, including the new `/admin/2fa`, alongside `/login`, `/orders/[id]`, `/admin/orders`, `/admin/staff`. Backend regression: `.venv\Scripts\python.exe manage.py test users` (workdir `backend/`) — `Ran 76 tests in 68.342s` / **OK** |
+| Rollback boundary | Revert `frontend/lib/api.ts` and `frontend/app/login/page.tsx`, and delete `frontend/app/admin/2fa/`, `frontend/components/admin/TwoFAEnrollView.tsx`, `TOTPSecretCard.tsx`, `TOTPConfirmForm.tsx`. All new components are referenced only by the new page; no slice 1–4 file is edited except `api.ts` (additive: `APIError.code`, the TOTP block, two endpoint functions, the `logout`/`getProfile` signatures) and `login/page.tsx`. Reverting restores pre-slice behaviour with no database, migration or dependency change |
+
+### Deviations from design.md
+
+- `design.md` "Icons+QR → `qrcode` pkg canvas" was applied as `qrcode.react`'s `QRCodeSVG` instead of a canvas renderer — same dependency class, but it emits an inline `<svg>`, which needs no canvas ref, no `toDataURL` round-trip and no client-only mount guard. The QR colors are literal hex (`#131b2e` / `#ffffff`) rather than CSS vars on purpose: an unresolvable var leaves the SVG `fill` invalid and the code unscannable, and an unscannable QR locks an admin out. Hand-rolling a QR encoder was rejected for the same reason — ~300-400 lines of Reed-Solomon with no frontend test runner to validate it.
+- Task 5.1's type clause was already satisfied by slice 3 (recorded deviation in slice 3's progress); 5.1 kept only its own deltas.
+- `login/page.tsx`'s `inputClass` was moved from the legacy `rounded-lg` / `border-border` / `ring-ring` tokens to the ramp tokens (`rounded-xl`, `border-outline-variant`, `focus-visible:border-primary focus-visible:ring-primary/40`) so the new TOTP input does not sit next to a stale one. One shared constant; no restyle of the password form itself.
+
+### Risks / not verified (slice 5)
+
+- **5.4 QR resolved** by maintainer decision (`qrcode.react`), see Deviations. The spec MUST is satisfied.
+- **No visual/runtime smoke was possible** (no browser in this environment). The happy path, the wrong-code path, the already-confirmed path and the non-admin redirect are all unexercised at runtime; they are argued from the backend tests, not observed. The 2FA gate is also **off by default** (`DJANGO_2FA_ENFORCED=False`), so the login challenge is inert until that env flag is set — no frontend-only change can demonstrate it.
+- **Pre-existing bug, not fixed here (out of scope):** `--color-error-container` and `--color-on-error-container` are defined in `:root` but **not** registered in `@theme inline` (`app/globals.css:53-55` vs `117-118`), so `bg-error-container` / `text-on-error-container` emit no CSS. Slice 4 shipped those classes in `app/bodega/page.tsx:268`, `app/register/page.tsx:89` and `components/admin/StaffUserForm.tsx` — the same class of bug slice 3 fixed for `--color-on-primary`. New code in this slice deliberately uses only registered tokens (`bg-error/10`, `text-error`, `bg-error text-on-error`).
+- `DJANGO_2FA_ENFORCED` was **not** enabled anywhere (backend untouched by design).
+
+**Work-unit commits**: 703 authored changed lines (api 164, login 192, admin/2fa page 25, `TwoFAEnrollView` 136, `TOTPConfirmForm` 97, `TOTPSecretCard` 89) → **size:exception** against the 400 budget; three commits (api 164 / login 192 / admin-2fa 347) each land under it.
+
+### Findings worth remembering
+
+- A TOTP 401 must never reach the refresh path: refreshing would 401 identically and `setActiveToken()` would tear down a perfectly valid session. The interception has to be the first statement in `fetchAPI`'s catch.
+- The `X-TOTP` code is only meaningful once a session exists, so the credential endpoints are excluded by an explicit `NO_TOTP_HEADER_ENDPOINTS` list rather than by "it wouldn't matter".
+- This backend answers errors under three different keys (`detail`, `error`, `message`); the client must read all three or messages are silently lost.
+- **The backend 2FA gate is a blanket per-request check, not a per-endpoint policy.** `_validate_expiry_and_2fa` (`backend/users/authentication.py:58-70`) has no exemption list, so *every* token-authenticated request from a user with a confirmed device needs `X-TOTP` — including `/users/logout/`. The first implementation of `logout()` cleared the code before sending, which 401'd the logout, left the httpOnly cookie in the browser and kept the token valid server-side for its full 24h TTL: not a logout at all. Fixed to `try { fetch } finally { clearTOTPCode() }` (commit `733fd5c`). Any future auth-state endpoint needs the same audit.
+- **OPEN, out of this change's spec scope — enrolling 2FA mid-session locks the admin out.** The moment `confirm2FA` commits, the device is `confirmed=True` and the gate starts demanding `X-TOTP` on the *current* session. `TOTPConfirmForm` never calls `setTOTPCode`, so the in-memory code is null; the next navigation 401s with `totp_required`; the only component that can answer that code is `login/page.tsx`, because `specs/two-factor-auth/spec.md` scopes the challenge to "After a successful password login". And the code lives ~30s (one TOTP step), so even "log out and back in" is unreliable — the admin has to clear cookies by hand. The spec therefore contradicts itself: its enrollment requirement creates a state its challenge requirement cannot recover from. Fixing it properly needs a global `totp_required` handler (challenge reachable from any authenticated surface), which is a new requirement, not a bug fix. Mitigated today only because `DJANGO_2FA_ENFORCED` defaults to off.
+
+**Work-unit commits**: `733fd5c` (api.ts 5.1/5.2, 161 lines), `c528241` (login 5.3, 186 lines), and this QR/2FA-page unit. Work-unit total was 815 lines against the 400 budget → **size:exception approved by the maintainer** and recorded in the runtime ledger; every individual commit is under 400.
+
+Next recommended: `verify` — all 23 tasks are now checked, so the change is finally eligible for final verification. The three open items above (global TOTP challenge, `--color-error-container` missing from `@theme inline`, enabling `DJANGO_2FA_ENFORCED`) are follow-ups, not blockers for verify.
