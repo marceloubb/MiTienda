@@ -114,6 +114,8 @@
   --color-surface-container-highest: var(--surface-container-highest);
   --color-outline: var(--outline);
   --color-outline-variant: var(--outline-variant);
+  --color-error-container: var(--error-container);
+  --color-on-error-container: var(--on-error-container);
   --color-error: var(--error);
   --color-on-error: var(--on-error);
   --font-sans: var(--font-jakarta);

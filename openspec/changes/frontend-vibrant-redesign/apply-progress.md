@@ -186,8 +186,29 @@ Frontend only. **No file under `backend/` was created, modified or deleted** (`g
 - The `X-TOTP` code is only meaningful once a session exists, so the credential endpoints are excluded by an explicit `NO_TOTP_HEADER_ENDPOINTS` list rather than by "it wouldn't matter".
 - This backend answers errors under three different keys (`detail`, `error`, `message`); the client must read all three or messages are silently lost.
 - **The backend 2FA gate is a blanket per-request check, not a per-endpoint policy.** `_validate_expiry_and_2fa` (`backend/users/authentication.py:58-70`) has no exemption list, so *every* token-authenticated request from a user with a confirmed device needs `X-TOTP` — including `/users/logout/`. The first implementation of `logout()` cleared the code before sending, which 401'd the logout, left the httpOnly cookie in the browser and kept the token valid server-side for its full 24h TTL: not a logout at all. Fixed to `try { fetch } finally { clearTOTPCode() }` (commit `733fd5c`). Any future auth-state endpoint needs the same audit.
-- **OPEN, out of this change's spec scope — enrolling 2FA mid-session locks the admin out.** The moment `confirm2FA` commits, the device is `confirmed=True` and the gate starts demanding `X-TOTP` on the *current* session. `TOTPConfirmForm` never calls `setTOTPCode`, so the in-memory code is null; the next navigation 401s with `totp_required`; the only component that can answer that code is `login/page.tsx`, because `specs/two-factor-auth/spec.md` scopes the challenge to "After a successful password login". And the code lives ~30s (one TOTP step), so even "log out and back in" is unreliable — the admin has to clear cookies by hand. The spec therefore contradicts itself: its enrollment requirement creates a state its challenge requirement cannot recover from. Fixing it properly needs a global `totp_required` handler (challenge reachable from any authenticated surface), which is a new requirement, not a bug fix. Mitigated today only because `DJANGO_2FA_ENFORCED` defaults to off.
+- **OPEN, out of this change's spec scope — enrolling 2FA mid-session locks the admin out.** The moment `confirm2FA` commits, the device is `confirmed=True` and the gate starts demanding `X-TOTP` on the *current* session. `TOTPConfirmForm` never calls `setTOTPCode`, so the in-memory code is null; the next navigation 401s with `totp_required`; the only component that can answer that code is `login/page.tsx`, because `specs/two-factor-auth/spec.md` scopes the challenge to "After a successful password login". And the code lives ~30s (one TOTP step), so even "log out and back in" is unreliable — the admin has to clear cookies by hand. Fixing it properly needs a global `totp_required` handler (challenge reachable from any authenticated surface), which is a new requirement, not a bug fix. Mitigated today only because `DJANGO_2FA_ENFORCED` defaults to off. **Verify ruled this a spec GAP, not a spec contradiction** — the earlier "the spec contradicts itself" framing above was mine and it was wrong: no requirement mentions session continuity, so there is nothing to contradict. The mechanism is real; the classification is "missing requirement", and it belongs to a new change.
 
 **Work-unit commits**: `733fd5c` (api.ts 5.1/5.2, 161 lines), `c528241` (login 5.3, 186 lines), and this QR/2FA-page unit. Work-unit total was 815 lines against the 400 budget → **size:exception approved by the maintainer** and recorded in the runtime ledger; every individual commit is under 400.
 
-Next recommended: `verify` — all 23 tasks are now checked, so the change is finally eligible for final verification. The three open items above (global TOTP challenge, `--color-error-container` missing from `@theme inline`, enabling `DJANGO_2FA_ENFORCED`) are follow-ups, not blockers for verify.
+## Post-verify outcome — this change is NOT archived
+
+Final verification ran against HEAD `8e515dd` and returned verdict **`fail`** (`verify-report.md`, 264 lines, 19 requirements / 44 scenarios validated). The build and lint gates are green; the failure is in the spec-to-code trace, not in the gates.
+
+The maintainer decided to stop remediating here rather than expand this change, so exactly one fix was applied afterwards:
+
+- **CRITICAL-2 fixed** — `--color-error-container` and `--color-on-error-container` registered in `@theme inline` (`app/globals.css`, mirroring the primary/secondary ordering). Proof rather than assumption: `.bg-error-container` and `.text-on-error-container` are now present in the built stylesheet, and were absent from it before. This repaired 25 dead class usages across 8 files.
+
+Everything else the verify surfaced is deferred to a new change (`frontend-design-system-followups`), and is **not** a regression introduced by this change:
+
+| Deferred item | Nature |
+|---|---|
+| Typography MUSTs: `--font-label` registered but 0 usages, type scale untokenized | Missing implementation of task 1.2's requirement |
+| `--text-muted` at 4.26:1 vs WCAG AA 4.5:1 | Upstream in DESIGN.md; the pre-swap value was worse (2.70:1) |
+| Elevation clause of the Radius and Elevation Scale requirement | Unimplemented design-system clause, no shadow tokens exist |
+| `manage.py test` exits 1 on a missing WhiteNoise manifest | Environmental: `STORAGES` uses `CompressedManifestStaticFilesStorage` and `backend/staticfiles/` is absent. Note `backend/staticfiles/` is **not** gitignored, so a bare `collectstatic` is not a safe fix — it needs a `.gitignore` entry or a test-runner storage override |
+| 5 more unregistered `@theme` tokens (tertiary set, `on-background`) | Same trap as CRITICAL-2, currently unused so harmless |
+| `rounded-lg` left on 2 `<button>`s in `components/Navbar.tsx` | Task 1.4 completeness |
+| 2FA enrollment lockout | Spec gap (see above) |
+| 23 of 44 scenarios without runtime evidence | This project has no frontend test runner and no browser was available; `npm run build` + `npm run lint` are the only frontend gates by project convention |
+
+Next recommended: do not archive this change. Open `frontend-design-system-followups` with its own proposal and spec, and carry the table above as its input.
