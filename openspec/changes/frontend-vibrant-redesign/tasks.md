@@ -24,7 +24,7 @@ Chain strategy: pending
 - [x] 1.1 `frontend/app/globals.css`: Vibrant `:root` tokens from `docs/designs/DESIGN.md` (read-only): primary `#00288e`, secondary `#006c49`, error `#ba1a1a`, surfaces/outlines; remap `--primary/--stock/--stock-low/--offer/--destructive/--surface-*`; `@theme inline` keeps utilities.
 - [x] 1.2 `frontend/app/layout.tsx`: `next/font` PJS + Inter (drop Geist); `--font-jakarta/--font-inter/--font-label`; no `user-scalable=no`.
 - [x] 1.3 Create `frontend/lib/icons.ts`: lucide map (ArrowLeft, Truck, Route, Clock, Check, ShoppingBag, QrCode, Navigation).
-- [ ] 1.4 Radius ramp on `frontend/components/ui/*`: cards rounded-2xl, buttons/inputs rounded-xl, badges rounded-full. Verify: build+lint; smoke palette, focus, AA.
+- [x] 1.4 Radius ramp on `frontend/components/ui/*`: cards rounded-2xl, buttons/inputs rounded-xl, badges rounded-full. Verify: build+lint; smoke palette, focus, AA.
 
 ## Phase 2: Order Events
 

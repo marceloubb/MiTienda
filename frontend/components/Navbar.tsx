@@ -142,12 +142,12 @@ export default function Navbar() {
                 placeholder="Buscar productos, herramientas, materiales..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg bg-surface-0 py-2.5 pr-12 pl-4 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-primary/50"
+                className="w-full rounded-xl bg-surface-0 py-2.5 pr-12 pl-4 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-primary/50"
               />
               <button
                 type="submit"
                 aria-label="Buscar"
-                className="absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md bg-primary text-white transition-colors outline-none hover:bg-primary/80 focus-visible:ring-3 focus-visible:ring-white/50"
+                className="absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-xl bg-primary text-white transition-colors outline-none hover:bg-primary/80 focus-visible:ring-3 focus-visible:ring-white/50"
               >
                 <Search className="size-4" />
               </button>
@@ -224,7 +224,7 @@ export default function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/80"
+                className="rounded-xl bg-primary px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/80"
               >
                 Ingresar
               </Link>
@@ -260,7 +260,7 @@ export default function Navbar() {
                 placeholder="Buscar productos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg bg-surface-0 px-4 py-2.5 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-primary/50"
+                className="w-full rounded-xl bg-surface-0 px-4 py-2.5 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-primary/50"
               />
             </form>
             <nav className="flex flex-col gap-3 text-sm">
