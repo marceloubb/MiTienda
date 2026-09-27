@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 const inputClass =
-  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40";
+  "w-full rounded-xl border border-control-border bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40";
 
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 

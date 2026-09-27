@@ -21,7 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { sileo } from "sileo";
 
 const inputClass =
-  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pr-4 pl-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40";
+  "w-full rounded-xl border border-control-border bg-surface-container-lowest py-2.5 pr-4 pl-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40";
 
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
@@ -232,7 +232,7 @@ function ProfileContent({ user }: { user: UserType }) {
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40"
+                  className="w-full rounded-xl border border-control-border bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40"
                   autoComplete="address-level2"
                 />
               </div>
@@ -246,7 +246,7 @@ function ProfileContent({ user }: { user: UserType }) {
                   name="postal_code"
                   value={formData.postal_code}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40"
+                  className="w-full rounded-xl border border-control-border bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40"
                   autoComplete="postal-code"
                 />
               </div>

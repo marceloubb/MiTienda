@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 const inputClass =
-  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40";
+  "w-full rounded-xl border border-control-border bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40";
 
 const CREDENTIALS_ERROR =
   "Credenciales inválidas. Revisa tu usuario y contraseña e inténtalo de nuevo.";

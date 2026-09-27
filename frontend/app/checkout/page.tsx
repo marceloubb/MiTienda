@@ -57,7 +57,7 @@ const STEPS = ["Envío", "Pago", "Revisión", "Confirmación"];
 type StepIndex = 0 | 1 | 2 | 3;
 
 const inputClass =
-  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "w-full rounded-xl border border-control-border bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
@@ -395,7 +395,7 @@ function PaymentStep({
               className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${
                 isSelected
                   ? "border-primary bg-primary/5"
-                  : "border-outline-variant hover:bg-surface-container-low"
+                  : "border-control-border hover:bg-surface-container-low"
               }`}
             >
               <Icon

@@ -50,7 +50,7 @@ const TEXT_FLOOR = 4.5; // SC 1.4.3, text
 const CONTROL_BORDER_FLOOR = 3; // SC 1.4.11, non-text boundaries
 
 const TEXT_TOKENS = ['--text-primary', '--text-secondary', '--text-muted'] as const;
-/** `--control-border` re-points at this value in a later work unit. */
+/** `--control-border` re-points at this value; this suite floors the target. */
 const CONTROL_BORDER_TOKEN = '--outline';
 const DECORATIVE_OUTLINE_TOKEN = '--outline-variant';
 const DECORATIVE_OUTLINE_HEX = '#c4c5d5';

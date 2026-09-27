@@ -64,6 +64,9 @@
   --on-surface-variant: #444653;
   --outline: #757684;
   --outline-variant: #c4c5d5;
+  /* SC 1.4.11 boundary token. Re-points at --outline, so no new hex is
+     introduced; --outline-variant stays for dividers and decorative frames. */
+  --control-border: var(--outline);
   --on-background: #131b2e;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -120,6 +123,7 @@
   --color-surface-container-highest: var(--surface-container-highest);
   --color-outline: var(--outline);
   --color-outline-variant: var(--outline-variant);
+  --color-control-border: var(--control-border);
   --color-error-container: var(--error-container);
   --color-on-error-container: var(--on-error-container);
   --color-error: var(--error);

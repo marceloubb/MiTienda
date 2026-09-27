@@ -33,7 +33,7 @@ const ROLE_HINTS: Record<StaffRole, string> = {
 // El proyecto no tiene componente Input/Label/Select en components/ui;
 // se usan elementos nativos con el estilo visual del resto del sitio.
 const fieldClasses =
-  "h-9 w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40 disabled:opacity-50";
+  "h-9 w-full rounded-xl border border-control-border bg-surface-container-lowest px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40 disabled:opacity-50";
 
 interface StaffUserFormProps {
   /** Callback tras crear un usuario con éxito (refresca el resumen del staff). */
