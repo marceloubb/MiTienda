@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -152,13 +153,14 @@ export default function CartPage() {
                     index !== cart.items.length - 1 ? "border-b border-outline-variant" : ""
                   }`}
                 >
-                  <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-surface-container-high sm:size-20">
+                  <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-surface-container-high sm:size-20">
                     {item.product.image ? (
-                      <img
+                      <Image
                         src={item.product.image}
                         alt={item.product.name}
-                        loading="lazy"
-                        className="h-full w-full object-cover"
+                        fill
+                        sizes="80px"
+                        className="object-cover"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">

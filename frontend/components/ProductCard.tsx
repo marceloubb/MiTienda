@@ -6,6 +6,7 @@ import { addToCart } from "@/lib/api";
 import { ShoppingCart, Tag } from "lucide-react";
 import { sileo } from "sileo";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,10 +80,12 @@ export default function ProductCard({ product }: ProductCardProps) {
           </Badge>
         )}
         {product.image ? (
-          <img
+          <Image
             src={product.image}
             alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            fill
+            sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">

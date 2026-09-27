@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -223,11 +224,13 @@ export default function ProductDetailPage() {
             </Badge>
           )}
           {product.image ? (
-            <img
+            <Image
               src={product.image}
               alt={product.name}
-              loading="lazy"
-              className="h-full w-full object-cover"
+              fill
+              preload
+              sizes="(min-width: 768px) 50vw, 100vw"
+              className="object-cover"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">

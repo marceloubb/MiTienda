@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Banknote,
@@ -589,13 +590,14 @@ function OrderSummary({ cart }: { cart: Cart }) {
         <div className="max-h-60 space-y-3 overflow-y-auto">
           {cart.items.map((item) => (
             <div key={item.id} className="flex items-center gap-3">
-              <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-surface-container-high">
+              <div className="relative size-12 shrink-0 overflow-hidden rounded-xl bg-surface-container-high">
                 {item.product.image ? (
-                  <img
+                  <Image
                     src={item.product.image}
                     alt={item.product.name}
-                    loading="lazy"
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="48px"
+                    className="object-cover"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
