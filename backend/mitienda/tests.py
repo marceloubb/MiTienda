@@ -117,8 +117,19 @@ class SecureModeTests(TestCase):
         super().tearDown()
 
 
+@override_settings(STORAGES={'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}})
 class AdminAccessControlTests(TestCase):
-    """DJANGO_ADMIN_URL drives the admin path; AdminIPAllowlistMiddleware gates it."""
+    """DJANGO_ADMIN_URL drives the admin path; AdminIPAllowlistMiddleware gates it.
+
+    The class-level STORAGES override swaps the manifest backend for the plain one so
+    the admin login template renders without a `staticfiles.json` produced by
+    `collectstatic`. Without it, `{% static %}` raises `ValueError: Missing staticfiles
+    manifest entry` on any clean checkout, turning four admin-access tests red through
+    no code change at all. Production `STORAGES` is untouched, and storage selection is
+    deliberately not gated on `DEBUG` (Django 6.1's `setup_test_environment` inherits
+    `settings.DEBUG`, which settings.py defaults to False, so a DEBUG-gated block would
+    still select the manifest backend during tests).
+    """
 
     def _reload_settings(self, env):
         with mock.patch.dict(os.environ, env, clear=False):
