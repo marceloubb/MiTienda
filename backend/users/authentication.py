@@ -23,6 +23,14 @@ from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import AuthenticationFailed
 
 
+# H10: a confirmed TOTP device gates API access, but the gate must not trap a
+# 2FA user inside a session they cannot leave. Logging out is the one action
+# that reduces exposure rather than increasing it, so it is exempt from the code
+# requirement. The TTL check still applies above: an expired token cannot log
+# out. Add a path here only with the same justification.
+TOTP_EXEMPT_PATHS = frozenset({'/api/users/logout/'})
+
+
 class ExpiringTokenAuthentication(TokenAuthentication):
     """Reject DRF tokens older than ``DJANGO_TOKEN_TTL_HOURS`` (default 24).
 
@@ -55,7 +63,8 @@ class ExpiringTokenAuthentication(TokenAuthentication):
         ttl_hours = getattr(settings, 'DJANGO_TOKEN_TTL_HOURS', 24)
         if timezone.now() - token.created > timedelta(hours=ttl_hours):
             raise AuthenticationFailed('Token expirado')
-        if getattr(settings, 'DJANGO_2FA_ENFORCED', False):
+        if (getattr(settings, 'DJANGO_2FA_ENFORCED', False)
+                and request.path not in TOTP_EXEMPT_PATHS):
             # Imported lazily so the module loads even before django_otp apps
             # are enabled, and only when the gate is actually on.
             from django_otp.plugins.otp_totp.models import TOTPDevice
