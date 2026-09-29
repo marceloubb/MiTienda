@@ -143,7 +143,7 @@ export default function CartPage() {
       <div className="mt-6 grid gap-6 md:grid-cols-3">
         {/* Lista */}
         <div className="md:col-span-2">
-          <div className="overflow-hidden rounded-2xl bg-surface-container-lowest ring-1 ring-outline-variant">
+          <div className="overflow-hidden rounded-2xl bg-surface-container-lowest shadow-level-1 ring-1 ring-outline-variant">
             {cart.items.map((item, index) => {
               const isPending = pendingId === item.product.id;
               return (

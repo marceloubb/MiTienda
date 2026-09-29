@@ -117,7 +117,7 @@ export default function ProductDetailPage() {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Skeleton className="h-5 w-56" aria-hidden="true" />
-        <div className="mt-6 overflow-hidden rounded-2xl bg-card ring-1 ring-border md:grid md:grid-cols-2">
+        <div className="mt-6 overflow-hidden rounded-2xl bg-card shadow-level-1 ring-1 ring-border md:grid md:grid-cols-2">
           <Skeleton className="aspect-[4/3] w-full rounded-none md:aspect-auto md:h-full" aria-hidden="true" />
           <div className="space-y-4 p-8">
             <Skeleton className="h-3 w-24" aria-hidden="true" />

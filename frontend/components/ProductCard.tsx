@@ -68,7 +68,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-2xl bg-surface-container-lowest text-sm text-on-surface ring-1 ring-outline-variant transition-all duration-200 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/30">
+    <div className="group flex h-full flex-col overflow-hidden rounded-2xl bg-surface-container-lowest text-sm text-on-surface shadow-level-1 ring-1 ring-outline-variant transition-all duration-200 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/30">
       <Link
         href={`/products/${product.id}`}
         className="relative block aspect-[4/3] overflow-hidden bg-surface-container-low"

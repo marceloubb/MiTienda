@@ -255,8 +255,8 @@ function ProductsCatalog() {
           aria-pressed={selectedCategory === null}
           className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none ${
             selectedCategory === null
-              ? "border-primary bg-primary text-primary-foreground shadow-sm"
-              : "border-control-border bg-surface-container-lowest text-on-surface hover:border-primary/50 hover:shadow-sm"
+              ? "border-primary bg-primary text-primary-foreground shadow-level-1"
+              : "border-control-border bg-surface-container-lowest text-on-surface hover:border-primary/50 hover:shadow-level-1"
           }`}
         >
           <PackageOpen className="size-4" />
@@ -273,8 +273,8 @@ function ProductsCatalog() {
               aria-pressed={isSelected}
               className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none ${
                 isSelected
-                  ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                  : "border-control-border bg-surface-container-lowest text-on-surface hover:border-primary/50 hover:shadow-sm"
+                  ? "border-primary bg-primary text-primary-foreground shadow-level-1"
+                  : "border-control-border bg-surface-container-lowest text-on-surface hover:border-primary/50 hover:shadow-level-1"
               }`}
             >
               {getCategoryIconElement(category.name, "size-4")}

@@ -80,10 +80,10 @@ function Chip({
         "shrink-0 rounded-full px-4 py-1.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         tone === "error"
           ? active
-            ? "bg-error text-on-error shadow-sm"
+            ? "bg-error text-on-error shadow-level-1"
             : "bg-error-container text-on-error-container hover:bg-error-container/80"
           : active
-            ? "bg-primary font-bold text-on-primary shadow-sm"
+            ? "bg-primary font-bold text-on-primary shadow-level-1"
             : "bg-surface-container-high text-on-surface hover:bg-surface-container-highest"
       )}
     >

@@ -70,7 +70,7 @@ function KpiCard({
   return (
     <div
       className={cn(
-        "flex items-center justify-between rounded-xl bg-surface-container-lowest p-4 shadow-sm ring-1 ring-outline-variant/60",
+        "flex items-center justify-between rounded-xl bg-surface-container-lowest p-4 shadow-level-1 ring-1 ring-outline-variant/60",
         tone === "error" && "bg-error-container/50 ring-error/20"
       )}
     >

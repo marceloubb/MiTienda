@@ -264,7 +264,7 @@ export function DiscrepancyModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="discrepancy-modal-title"
-        className="w-full max-w-md rounded-2xl bg-surface-container-lowest p-6 shadow-2xl ring-1 ring-outline-variant"
+        className="w-full max-w-md rounded-2xl bg-surface-container-lowest p-6 shadow-level-2 ring-1 ring-outline-variant"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">

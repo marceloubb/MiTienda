@@ -112,7 +112,7 @@ export default function Navbar() {
   return (
     <header
       ref={headerRef}
-      className="sticky top-0 z-50 bg-[#1a1a1a] text-white shadow-lg"
+      className="sticky top-0 z-50 bg-[#1a1a1a] text-white shadow-level-2"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">

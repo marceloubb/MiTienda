@@ -248,7 +248,7 @@ function DeliveryTimeline({ order }: { order: Order }) {
 
   return (
     <section aria-label="Estado del pedido">
-      <div className="rounded-2xl bg-surface-container-lowest p-5 shadow-sm sm:p-6">
+      <div className="rounded-2xl bg-surface-container-lowest p-5 shadow-level-1 sm:p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="flex items-center gap-1.5 text-lg font-bold text-on-surface">
             <Route className="size-5 text-primary" />
@@ -275,7 +275,7 @@ function DeliveryTimeline({ order }: { order: Order }) {
                     {reached ? (
                       <span
                         className={cn(
-                          "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full shadow-sm",
+                          "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full shadow-level-1",
                           "bg-secondary text-on-secondary",
                           active && "ring-4 ring-on-primary-container"
                         )}
