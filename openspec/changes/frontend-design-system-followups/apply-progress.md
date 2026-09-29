@@ -5,7 +5,7 @@
 **Branch**: `feat/vibrant-redesign-slice5-2fa`
 **Chain strategy**: `stacked-to-main`
 
-## Status: W1, W3, W2, W4, W6, W7, W8 and W5a complete; W5b-W5c pending
+## Status: W1, W3, W2, W4, W6, W7, W8, W5a and W5b complete; W5c pending
 
 | Unit | PR | State | Commit |
 |---|---|---|---|
@@ -18,7 +18,8 @@
 | W7 | PR 6 | **done, `settle` still blocked** | `40801e4` + `9a2dd7d` + `10f55fc` (docs) |
 | W8 | PR 7 | **done, `settle` still blocked** | `6bb9e4a` + this commit (docs) |
 | W5a | PR 8 | **done, `settle` still blocked** | `db12ca3` |
-| W5b/W5c | PR 9–10 | pending — **next objective to open** | — |
+| W5b | PR 9 | **done, `settle` still blocked** | `79c8900` |
+| W5c | PR 10 | pending — **next objective to open** | — |
 
 W6, W7, W8 and W5a are committed. None is `settle`d: `gentle-ai.exe` is blocked by
 Windows App Control ("Una directiva de Control de aplicaciones bloqueó este
@@ -1486,6 +1487,117 @@ class needed scaffolding and one already existed. **Forecast effort by artifact
 age, not task count** — a citation into already-written code underruns, a citation
 into unwritten code overruns.
 
+## W5b Files Changed (PR 9 - tasks 7.3-7.7)
+
+| File | Change | Lines |
+|---|---|---|
+| `frontend/components/TotpChallengeDialog.tsx` | **new** — global second-factor modal | +150 |
+| `frontend/lib/api.ts` | `onTOTPRequired` + handler dispatch + corrected comment | +60 / -9 |
+| `frontend/lib/auth-context.tsx` | handler effect, `totpRetry` state, dialog render | +27 / -1 |
+| `frontend/tests/control-border.test.ts` | new Bucket A site registered | +12 / -1 |
+| `frontend/tests/elevation-scale.test.ts` | `TOTAL_USAGES` 18→19, walk 37→38, new site mapped | +17 / -5 |
+
+Total: 5 files, 282 authored lines. `frontend/app/login/page.tsx` **unmodified**.
+
+## W5b Verification Results (PR 9)
+
+| Command | Result |
+|---|---|
+| `npm run test` | **OK** — 147/147 (was 145) |
+| `npm run build` | **OK** — exit 0, compiled in 977ms |
+| `npm run lint` | **OK** — exit 0 |
+| `npx tsc --noEmit` | **OK** — exit 0 |
+
+No interaction test mounts the dialog. W5c adds `totp-challenge.test.tsx`.
+
+## W5b Evidence (PR 9 - tasks 7.3-7.7)
+
+### Two of the five tasks were written against a world W5a had already ended
+
+Task 7.4 said: have `logout()` call `clearTOTPCode()` **before** the request, "so
+sign-out is immediate". `clearTOTPCode()` was already called at L337, in a
+`finally` that runs *after* the request, under a six-line comment explaining the
+opposite:
+
+> Clear only AFTER the request is sent: dropping the code first makes logout 401,
+> the httpOnly cookie survives in the browser and the token stays valid
+> server-side until it expires — which is not a logout at all.
+
+The task's premise was a gate that blocked logout. W5a removed that gate, so the
+instruction reduces to reverting a deliberate fix to an already-resolved bug.
+
+Task 7.7 said to delete `TOTPChallengeStep`, `needsTOTP`, `handleTOTPVerified`,
+the `if (needsTOTP)` branch and its render. All five symbols exist, at exactly
+the cited lines, in `app/login/page.tsx` — not in `api.ts`, which is where the
+task's structure implied they lived. Executing it as written would have left
+**login unable to complete 2FA**: `handleSubmit`'s probe at L157–165 sets
+`needsTOTP` to render the challenge, so removing the state removes the only path
+from a correct password to a verified session. The `Card`, `ShieldCheck` icon,
+heading and "Usar otra cuenta" button at L180–211 go with it, making this UI
+redesign rather than deletion.
+
+**Both were raised with the maintainer rather than executed or silently skipped.**
+The maintainer chose 1A (login challenge survives) and 2A (ordering unchanged).
+The reasoning behind 1A is now a comment in the code: the login challenge
+resolves 2FA *pre-session*, while the dialog replays an *already-authenticated*
+request. Different problems that share a backend error code.
+
+### The task's literal dispatch would have resolved a promise with `undefined`
+
+Task 7.3 said the dispatch returns `totpRequiredHandler(() => performFetch<T>(...))`.
+`onTOTPRequired` is typed `(retry) => void`, so that expression evaluates to
+`undefined` — and `return undefined` from an `async function fetchAPI<T>`
+resolves the caller's promise to `undefined` rather than to data.
+
+The implementation hands over the replay and then returns a **never-settling
+`Promise<never>`**. Without that, `getCart()` would resolve to `undefined` on a
+gated request and a burst of parallel 401s would each open their own challenge.
+Parking the original caller is what lets a single dialog satisfy all of them.
+
+This is the second task in a row whose literal instruction was wrong in a way that
+compiles, lints and passes a build.
+
+### The two guards failed on a correct change, and that was the guards working
+
+Adding a component with a control boundary and `shadow-level-2` tripped
+`control-border` and `elevation-scale`, which pin absolute per-file counts.
+**Four failures.** The baseline was confirmed green first — `git checkout` of the
+three files, 145/145, then restored — so the cause was measured rather than
+assumed, because a stash-based attempt had failed and silently proved nothing.
+
+Each failure was a distinct kind of miscount, measured individually:
+
+| Failure | Cause | Resolution |
+|---|---|---|
+| `Array(1)` vs `[]` in the Bucket A sweep | new file holds `border-control-border` | registered as a real site |
+| `toHaveLength(37)` | 38 `.tsx` files now exist | bumped, with a comment saying a new file is *expected* to bump it once |
+| 18 shadow usages | 19 — the dialog adds `shadow-level-2` | `TOTAL_USAGES` 18→19, site mapped |
+| per-file map vs total | map still summed to 18 | dialog mapped at 1, matching `DiscrepancyModal` |
+
+The Bucket A failure is the interesting one. The new file reuses the same
+module-level `inputClass` shape as `app/login/page.tsx:21`, so it is a **real
+Bucket A site and not a violation** — but "real" is a judgement the guard cannot
+make. A guard that only recognises the boundaries it was written against is not a
+guard, so the site was registered and the header now states that a new boundary
+is *expected* to fail this guard until counted. The Bucket B sweep — which is
+what actually catches an illegitimate repoint — stayed green throughout, which is
+how the two cases were told apart.
+
+**No test was weakened and no assertion was deleted to reach green.**
+
+### The dialog is a new modal inheriting an existing modal's chrome
+
+`DiscrepancyPanel.tsx:220-330` is the app's only other modal, and the new dialog
+reuses its overlay (`bg-on-surface/50 backdrop-blur-sm`), its
+`role="dialog"` / `aria-modal="true"` / labelled-heading structure, and its
+`max-w-md … rounded-2xl … shadow-level-2 ring-1 ring-outline-variant` surface.
+One modal idiom, two modals. The 6-digit input's affordances match the login
+step's, since the two challenges are visual twins.
+
+`clearTOTPCode()` runs **only in the catch**. On success the code now belongs to
+the live session and every later request needs it; clearing there would log the
+user straight back out.
+
 ## Verification Limits (carried forward)
 
 jsdom does not apply Tailwind's compiled output and `@theme` is build-time only. Nothing in this unit is browser verification. The radius swaps and elevation utilities in W6–W8 remain proven by build success plus manual inspection, never by computed style. Every verify report must restate this.
@@ -1502,6 +1614,10 @@ jsdom does not apply Tailwind's compiled output and `@theme` is build-time only.
 - **RESOLVED 2026-09-29 - the maintainer approved `@source not "../tests";`.** The orchestrator flagged it as a project-level content-scan change arriving inside an elevation diff and asked for confirmation rather than inheriting it silently. The maintainer approved proceeding. It is retained, and its standing consequence is unchanged: a class literal that appears only in a test file no longer emits a utility. See deviation 23.
 - **W8's two claims are unenforced — no guard exists for this unit.** Task 6.1's AC is "Footer Focus Visibility", and nothing checks it. Adding a twelfth footer anchor without a focus ring fails no test, and `sdd-verify` would have to catch it by reading. The sharper risk is the ring **colour**: this unit deliberately departs from `DESIGN.md:223` to `ring-white` because the design's `#1E40AF` measures 2.00:1 on this surface. A future reader seeing `ring-white` where the design says `#1E40AF` would reasonably "correct" it back and silently ship a focus indicator that fails the requirement it was added to satisfy. Both are one-line guard risks. **Raised rather than added**, because W8's approved forecast carried no guard and widening scope is not the implementer's call; see §W8 Evidence for the measured contrast figures a guard would assert.
 - **W8 visual verification is outstanding and cannot be closed here.** No browser is available, and `:focus-visible` is specifically a real-keyboard-focus state that jsdom does not apply. Nothing in this unit observed a painted ring. The 2.00:1-versus-17.40:1 measurement is arithmetic about the colour values, not proof that a ring is visible on screen. This is the **fifth** consecutive unit carrying that item, and it is the one where it matters most: the entire point of the change is a focus indicator that a keyboard user can see.
+- **W5b ships a modal with no interaction test, and the gap is worse than the usual visual caveat.** The deliverable is a keyboard-driven dialog whose behaviour is a state machine: a gated request mounts it, a bad code keeps it open, a good code replays and resolves the original caller's promise. **No test in W5b mounts the component** — W5c task 8.1 adds `frontend/tests/totp-challenge.test.tsx`, and all four of its scenarios are unexercised until then. jsdom would also apply neither `autoFocus` nor `:focus-visible` to this input, so even that test cannot settle the focus behaviour. **A `sdd-verify` report must not read W5b's green suite as evidence the challenge works.** What W5b does prove is that the types compose, the tree builds, and the guards still hold.
+- **W5b's guards must be reverted together with its source.** `control-border.test.ts` and `elevation-scale.test.ts` were adjusted to count a new component. Reverting only `api.ts`, `auth-context.tsx` and the dialog leaves the suite failing on counts that are correct for the new tree and wrong for the old one. The rollback boundary in `tasks.md` names all five files for this reason.
+- **W5b's parked promises are a deliberate design choice with a sharp edge.** `fetchAPI` returns a never-settling promise for a gated request when a handler is mounted. That is what makes one dialog serve a burst of parallel 401s, and it means **an abandoned gated request never settles** — no timeout, no rejection. If the dialog is dismissed by a route change rather than by entering a code, that caller's promise leaks for the life of the page. There is no cancel path by design (sign-out is the exit), so the edge is only reachable via navigation. Worth revisiting if `sdd-verify` finds a path that makes it common.
+- **Task 7.7's deletion is deferred to the maintainer, not completed.** `app/login/page.tsx` still carries `TOTPChallengeStep`, `needsTOTP`, `handleTOTPVerified` and the `if (needsTOTP)` branch. That is the maintainer's decision (1A), recorded on the task, and the symbols are intentional rather than missed. **A verify report reading `tasks.md` literally will see an unchecked task 7.7 and must not treat it as an omission.**
 - **W5a's `settle` is blocked for the same reason as W6, W7 and W8** — Windows App Control refuses to execute `gentle-ai.exe`, so `sdd-attempt` is unavailable. W5a created no new file, so unlike W4, W6 and W7 there is nothing to stage and the `untracked inventory changed` rejection cannot arise. Its evidence rests on commit `db12ca3` and the sections above.
 - **W5a's exemption is path-scoped, and that scoping is now the security boundary rather than a convenience.** `TOTP_EXEMPT_PATHS` has exactly one entry, and every future entry needs the same justification: the endpoint must *reduce* exposure, not merely be inconvenient without a code. A future task that adds, say, `token/refresh/` to this allowlist would be adding a credential-issuing endpoint to a security exemption, and no test in the suite would object — `test_exempt_paths_resolve_to_logout_view` checks that each entry resolves to `LogoutView`, so a non-logout entry would fail there, but the failure would read as a URL problem rather than a security one. **Read that test's failure message as a security signal.**
 - **Design §"Spec Placement Notes" archive-order questions remain open and untouched, as instructed.** `frontend-vibrant-redesign` was not modified.
