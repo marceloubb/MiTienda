@@ -131,6 +131,39 @@
   --font-sans: var(--font-jakarta);
   --font-heading: var(--font-jakarta);
   --font-label: var(--font-inter);
+
+  /* Typography scale (docs/designs/DESIGN.md, `typography:`). Each step is a
+     base --text-{step} token paired with a --text-{step}--line-height sub-token,
+     because Tailwind v4 emits one utility from the pair; a base token without
+     its sub-token emits a utility whose line-height silently inherits. Values
+     are verbatim from the design source, units included. Insertion anchor is
+     --font-label, so this block is revertible without touching W4's
+     --control-border pair above or W7's shadow tokens. */
+  --text-display-hero: 36px;
+  --text-display-hero--line-height: 44px;
+  --text-headline-lg: 28px;
+  --text-headline-lg--line-height: 34px;
+  --text-headline-md: 22px;
+  --text-headline-md--line-height: 28px;
+  --text-headline-sm: 18px;
+  --text-headline-sm--line-height: 24px;
+  --text-price-hero: 24px;
+  --text-price-hero--line-height: 28px;
+  --text-price-card: 18px;
+  --text-price-card--line-height: 22px;
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 16px;
+  --text-label-lg: 14px;
+  --text-label-lg--line-height: 18px;
+  --text-label-md: 12px;
+  --text-label-md--line-height: 16px;
+  --text-label-badge: 11px;
+  --text-label-badge--line-height: 14px;
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
