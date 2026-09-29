@@ -5,7 +5,7 @@
 **Branch**: `feat/vibrant-redesign-slice5-2fa`
 **Chain strategy**: `stacked-to-main`
 
-## Status: W1, W3, W2, W4 and W6 complete (W6 including the cascade correction); W7 next, W8-W5c pending
+## Status: W1, W3, W2, W4, W6 and W7 complete (W6 including the cascade correction); W8 next, W5-W5c pending
 
 | Unit | PR | State | Commit |
 |---|---|---|---|
@@ -15,8 +15,8 @@
 | W2 | PR 3 | **done** | `beb7d1f` |
 | W4 | PR 4 | **done** | `fe4c902` |
 | W6 | PR 5 | **implemented and verified — uncommitted, awaiting the orchestrator's commit and `settle`** | — |
-| W7 | PR 6 | pending — **next objective to open** | — |
-| W8 | PR 7 | pending | — |
+| W7 | PR 6 | **implemented and verified — uncommitted, awaiting the orchestrator's commit and `settle`** | — |
+| W8 | PR 7 | pending — **next objective to open** | — |
 | W5a/W5b/W5c | PR 8–10 | pending | — |
 
 W1 and W3 both landed. W3 (task 1.9, the Django `STORAGES` override) was
@@ -61,6 +61,8 @@ so the record is complete rather than flattering.
 - [x] 3.3 No Bucket B site touched, proven by absence from the diff and by a RED-proven tree-wide guard
 - [x] 4.1 `frontend/app/globals.css` `@theme inline` — the 12 scale steps as 24 declarations, `+24/−0` plus a 7-line block comment
 - [x] 4.2 `frontend/components/ui/button.tsx:6` and `frontend/components/ui/badge.tsx:7` — `font-label` plus the matching scale step, one line each
+- [x] 5.1 `frontend/app/globals.css` `@theme inline` — the 4 elevation levels, `+4/−0` plus a 4-line block comment
+- [x] 5.2 The 18 elevation sites across 12 files — 14 stock shadows converted, 4 levels added to surfaces that had none
 
 ## Files Changed
 
@@ -884,6 +886,374 @@ exist. Removed before the unit closed; the file is 208 lines, not 219.
     - **A naive guard would have passed vacuously.** The obvious classifier - "is `text-X` a font-size utility?" via `registrations.has('--text-X')` - returns **false for `text-sm`, `text-xs` and `text-lg`**, because this stylesheet does not re-declare Tailwind's built-in text tokens; they arrive from the default theme. A guard built that way would report the pre-correction base lists as clean and stay green forever. The shipped classifier inverts the test: a `text-*` token is a **colour** utility iff `--color-X` *is* locally registered (true for `--color-primary-foreground` at `globals.css:188` and `--color-muted-foreground` at `:184`), and everything else `text-*` counts as a competing size. Fail-safe polarity: an unrecognised token counts against the design, not for it.
     - **The `size` variants are the real regression risk, not the base lists.** `button.tsx` sets `font-size` independently in `size="xs"` (`text-xs`) and `size="sm"` (`text-[0.8rem]`). Deleting the base competitor is only safe because both out-sort `text-label-lg`; had the scale step sorted *after* them, the correction would have silently frozen every small button to 14px. The guard pins the property the correction depends on. Neither variant is exercised by the current app, so this is a cascade argument over measured offsets, not an observed render. Original measurement in §W6 Cascade Finding; the decision is in Open Items. This is the kind of thing only a compiled-CSS read catches: `npm run test` and `npm run build` are both green with the tokens present *and* inert.
 
+## W7 Files Changed (PR 6 — tasks 5.1–5.2)
+
+| File | Action | Change |
+|------|--------|--------|
+| `frontend/app/globals.css` | Modified | `+17/−0` — the 4 `--shadow-level-*` declarations with a 4-line block comment, plus `@source not "../tests";` with a 6-line comment (see §W7 Test-Directory Content Scan) |
+| `frontend/app/page.tsx` | Modified | `+2/−2` — L179 `shadow-sm`, L180 `hover:shadow-sm` → `shadow-level-1` |
+| `frontend/app/products/page.tsx` | Modified | `+4/−4` — two filter-toggle pairs, L258/259 and L276/277 |
+| `frontend/app/orders/[id]/page.tsx` | Modified | `+2/−2` — L251 order card, L278 timeline step dot |
+| `frontend/app/orders/page.tsx` | Modified | `+1/−1` — L121 active status chip |
+| `frontend/app/cart/page.tsx` | Modified | `+1/−1` — L146 container **gains** `shadow-level-1` |
+| `frontend/app/products/[id]/page.tsx` | Modified | `+1/−1` — L120 `bg-card` surface **gains** `shadow-level-1` |
+| `frontend/components/ProductCard.tsx` | Modified | `+1/−1` — L71 root **gains** `shadow-level-1` |
+| `frontend/components/ui/card.tsx` | Modified | `+1/−1` — L14 base **gains** `shadow-level-0` |
+| `frontend/components/Navbar.tsx` | Modified | `+1/−1` — L115 `shadow-lg` → `shadow-level-2` |
+| `frontend/components/admin/DiscrepancyPanel.tsx` | Modified | `+1/−1` — L267 `shadow-2xl` → `shadow-level-2` |
+| `frontend/components/admin/StaffKpiRow.tsx` | Modified | `+1/−1` — L73 `shadow-sm` → `shadow-level-1` |
+| `frontend/components/admin/StatusFilterChips.tsx` | Modified | `+2/−2` — L83, L86 |
+| `frontend/tests/elevation-scale.test.ts` | **Created** | 395 lines, 34 tests — the task 5.1 and 5.2 guard |
+
+**Authored changed lines for W7: 446** (17 `globals.css` + 34 class lines + 395
+new guard), against a **~16** forecast — **28×**. This **exceeds the 400 review
+budget by 46** and the 250 attempt ceiling, so unlike W1–W6 it needs a
+`size:exception` against the *review* budget, not only the attempt ledger.
+W4 deviation 15 predicted this exactly: *"a negative constraint is worth zero
+lines in a production-line forecast"*, and W7's AC is nothing but a negative
+claim. The production half of the diff — 51 lines — is within any sane budget.
+
+## W7 Verification Results (PR 6)
+
+All four commands run from `frontend/` and observed directly, in the order
+tasks.md names them, **on the shipped state after both Task 5.1 and Task 5.2
+and after the `@source not` correction**.
+
+| Command | Exit | Observed |
+|---|---|---|
+| `npm run test elevation-scale` | 0 | **1 test file passed, 34 tests passed** in 1.21s |
+| `npm run test` | 0 | **5 test files passed, 145 tests passed** in 2.11s — W6's 111 plus W7's 34, **0 regressed** |
+| `npm run build` | 0 | **Compiled successfully** (757ms / 489ms / 872ms across three runs); TypeScript finished in 1.87s; **17 routes** |
+| `npm run lint` | 0 | **0 errors, 0 warnings.** ESLint printed no diagnostics. |
+
+The build emitted the one environment warning already recorded under W6 — Next
+ignored `C:\Users\marce\package-lock.json`, which lives outside the repository
+and is not a W7 file.
+
+The build was run **three times** and the output is **deterministic**: the same
+stylesheet hash `0tx0p9w3y3gc3.css` and the same 66,327 bytes every time. The
+third of those was a verification probe (§W7 Cascade Order) whose only
+temporary change was removing one line, and `app/globals.css` was restored to
+its original SHA-256 before the final build.
+
+## W7 Evidence (PR 6 — tasks 5.1–5.2)
+
+Design source: `docs/designs/DESIGN.md` §"Ambient Shadow Hierarchy", lines
+190–194. The four values registered in `@theme inline`, verbatim, units
+unreformatted:
+
+| Token | Value | Design consumers | Consumed by |
+|---|---|---|---|
+| `--shadow-level-0` | `none` | flat background plane, 1px border only | `components/ui/card.tsx:14` |
+| `--shadow-level-1` | `0px 2px 8px -2px rgba(15, 23, 42, 0.06)` | product grids, category squares | 13 sites |
+| `--shadow-level-2` | `0px 8px 24px -4px rgba(15, 23, 42, 0.12)` | bottom sheets, sticky bars, modals | `Navbar.tsx:115`, `DiscrepancyPanel.tsx:267` |
+| `--shadow-level-3` | `0px 16px 36px -6px rgba(15, 23, 42, 0.18)` | toasts, undo pills, cart drawers | **none — registered ahead of use** |
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | `npm run test elevation-scale` → exit 0, **34/34 passed** in 1.30s |
+| Full-suite confirmation | `npm run test` → exit 0, **5 files / 145 tests passed** (baseline 111/111, +34 new, 0 regressed) |
+| Lint / build | `npm run lint` → exit 0, 0 errors 0 warnings. `npm run build` → exit 0, 17 routes, TypeScript clean. |
+| Runtime harness command/scenario and exact result | **NOT PERFORMED — no browser is available in this environment, and nothing here is a substitute for one.** The forecast's harness is `npm run dev` with "elevation inspected manually on `/` and `/cart`". That needs a browser this environment does not have. The compiled production stylesheet was read instead, and that is real evidence about *emission* — **it is not evidence about paint.** Nothing in this unit observed a rendered shadow, a computed style, or a pixel. **Open item for `sdd-verify`.** |
+| Rollback boundary | Revert the 4 declarations **and** the `@source not "../tests";` line in `frontend/app/globals.css` — the shadow block is line-scoped between `--font-label: var(--font-inter);` and `--color-sidebar-ring: var(--sidebar-ring);`, and a whole-file checkout also drops W4's `--control-border` pair and W6's 24 typography declarations. Revert the 18 class lines across 11 `.tsx` files, and delete `frontend/tests/elevation-scale.test.ts`. **Keep the `@source not` line even when reverting only the shadows**: it is the correction in §W7 Test-Directory Content Scan and is not part of the elevation scale. |
+| Usage count, measured | **14 stock → 18 level.** 14 pre-existing `shadow-*` usages converted 1:1, 4 surfaces that carried no shadow given a level, 12 files. Pinned as per-file counts in the guard, never as line numbers. |
+| Design's Level-1 `#F1F5F9` stroke | **Deliberately not added.** The design pairs Level 1 with a 1px `#F1F5F9` stroke, and the 13 Level-1 surfaces already carry `border-control-border` or `ring-outline-variant` from W4. Repointing them is W4's contract, not this unit's; the guard asserts nothing about stroke colour. |
+
+### W7 Cascade Invariant — why the guard is a negative claim
+
+In Tailwind v4 every `shadow-*` utility lands in the same `@layer utilities`
+with identical specificity, so the compiled stylesheet decides the winner by
+sorting the namespace **alphabetically**:
+
+```
+shadow-2xl  <  shadow-level-0..3  <  shadow-lg  <  shadow-sm
+```
+
+Every stock Tailwind shadow out-sorts the custom level tokens. A surviving
+`shadow-sm` does not "win sometimes" — it wins unconditionally, and a
+`shadow-level-1` on the same element is dead markup. Markup order cannot
+express a preference and no author-side reordering exists, which is the same
+wall W6 hit in the `text-` namespace. **The only available fix is the one W6
+applied to the font primitives: delete the competitor.** So the invariant is:
+
+> Every `shadow-*` utility anywhere in `frontend/app` and `frontend/components`
+> must be a `shadow-level-*` token. **Zero stock shadows.**
+
+That is an *absence* claim, and absence claims are invisible at runtime: the
+build is green, lint is clean, and the surface simply keeps its stock
+elevation. 14 of them were shipping. Hence a tree-wide guard rather than a
+per-site assertion.
+
+### Guard Sensitivity — RED-proven on the real tree, not asserted
+
+The guard was run **before** Task 3's migration and observed failing against
+the shipped sources. Verbatim, 16 of 34 tests failed:
+
+```
+ ❯ tests/elevation-scale.test.ts (34 tests | 16 failed) 45ms
+     × the whole tree holds 18 shadow usages and every one is a level token 9ms
+     × app/cart/page.tsx holds 1 level shadows 1ms
+     × app/orders/[id]/page.tsx holds 2 level shadows 1ms
+     × app/orders/page.tsx holds 1 level shadows 1ms
+     × app/page.tsx holds 2 level shadows 1ms
+     × app/products/[id]/page.tsx holds 1 level shadows 1ms
+     × app/products/page.tsx holds 4 level shadows 1ms
+     × components/Navbar.tsx holds 1 level shadows 1ms
+     × components/ProductCard.tsx holds 1 level shadows 1ms
+     × components/admin/DiscrepancyPanel.tsx holds 1 level shadows 1ms
+     × components/admin/StaffKpiRow.tsx holds 1 level shadows 0ms
+     × components/admin/StatusFilterChips.tsx holds 2 level shadows 1ms
+     × components/ui/card.tsx holds 1 level shadows 1ms
+     × the per-file counts and the tree-wide total agree 5ms
+     × no stock Tailwind shadow utility is referenced by any source file 12ms
+     × a stock shadow reintroduced at a real site is visible to the sweep 1ms
+
+ FAIL  tests/elevation-scale.test.ts > zero stock shadow utilities survive (task 5.2) > no stock Tailwind shadow utility is referenced by any source file
+AssertionError: stock shadows out-sort every shadow-level-* token in the compiled @layer utilities, so each utility below silently overrides its level:
+  app/orders/[id]/page.tsx:251 — shadow-sm
+  app/orders/[id]/page.tsx:278 — shadow-sm
+  app/orders/page.tsx:121 — shadow-sm
+  app/page.tsx:179 — shadow-sm
+  app/page.tsx:180 — hover:shadow-sm
+  app/products/page.tsx:258 — shadow-sm
+  app/products/page.tsx:259 — hover:shadow-sm
+  app/products/page.tsx:276 — shadow-sm
+  app/products/page.tsx:277 — hover:shadow-sm
+  components/admin/DiscrepancyPanel.tsx:267 — shadow-2xl
+  components/admin/StaffKpiRow.tsx:73 — shadow-sm
+  components/admin/StatusFilterChips.tsx:83 — shadow-sm
+  components/admin/StatusFilterChips.tsx:86 — shadow-sm
+  components/Navbar.tsx:115 — shadow-lg: expected [ …(14) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "  app/orders/[id]/page.tsx:251 — shadow-sm",
++   "  app/orders/[id]/page.tsx:278 — shadow-sm",
++   "  app/orders/page.tsx:121 — shadow-sm",
++   "  app/page.tsx:179 — shadow-sm",
++   "  app/page.tsx:180 — hover:shadow-sm",
++   "  app/products/page.tsx:258 — shadow-sm",
++   "  app/products/page.tsx:259 — hover:shadow-sm",
++   "  app/products/page.tsx:276 — shadow-sm",
++   "  app/products/page.tsx:277 — hover:shadow-sm",
++   "  components/admin/DiscrepancyPanel.tsx:267 — shadow-2xl",
++   "  components/admin/StaffKpiRow.tsx:73 — shadow-sm",
++   "  components/admin/StatusFilterChips.tsx:83 — shadow-sm",
++   "  components/admin/StatusFilterChips.tsx:86 — shadow-sm",
++   "  components/Navbar.tsx:115 — shadow-lg",
++ ]
+
+ Test Files  1 failed (1)
+      Tests  16 failed | 18 passed (34)
+```
+
+All **14** stock usages were named with file and line, including the two in
+`app/orders/[id]/page.tsx` the task had omitted and the `Navbar.tsx` one the
+task had not listed.
+
+**Brackets — the walk was verified, not trusted.** `app/orders/[id]/` and
+`app/products/[id]/` hold literal square brackets in their directory names. A
+walk that builds a glob per directory lets the glob engine read `[id]` as a
+character class, matches nothing, and the guard passes **vacuously** over the
+one file holding two of the migrated sites. The shipped walk is
+`readdirSync(dir, { withFileTypes: true })` recursing on `entry.name`, so each
+segment reaches the filesystem as a literal string, and the guard asserts the
+bracket files are in the discovered set and that the walk found **37** `.tsx`
+files. The previous orchestrator survey made exactly this mistake; the count
+assertion is what makes a future regression of it loud rather than silent.
+
+**In-memory fixtures** additionally prove the extractor is not vacuous: a stock
+shadow is found with its line, a variant of one is found with the prefix kept
+(`hover:shadow-sm`, `md:shadow-lg`), a level token and a *variant* of a level
+token are not reported, an arbitrary value `shadow-[0_0_0_1px_rgb(0_0_0_/_0.1)]`
+is read whole rather than truncated, a `shadow-sm` in a comment is not counted,
+and a stock shadow reintroduced at `Navbar.tsx:115` is caught by the real
+sweep. The real files are never written by the suite.
+
+### W7 Compiled-Output Evidence — read from the build, not asserted
+
+Read from `.next/static/chunks/0tx0p9w3y3gc3.css` (**66,327 bytes**) after the
+green build. Every rule in the stylesheet whose selector mentions "shadow":
+
+| offset | selector | `--tw-shadow` |
+|---|---|---|
+| 33506 | `.shadow-level-0` | `none` |
+| 33673 | `.shadow-level-1` | `0px 2px 8px -2px var(--tw-shadow-color,#0f172a0f)` |
+| 33885 | `.shadow-level-2` | `0px 8px 24px -4px var(--tw-shadow-color,#0f172a1f)` |
+| 43396 | `.hover\:shadow-level-1:hover` | `0px 2px 8px -2px var(--tw-shadow-color,#0f172a0f)` |
+
+**Emitted source order: 33506 → 33673 → 33885**, so the level rules occupy a
+contiguous block and the `hover:` variant sits later, in Tailwind's separate
+hover section. The rgba values survived compilation byte-for-byte in
+`#0f172a0f` / `#0f172a1f` hex-alpha form, which is the same colour, not a
+reformulation.
+
+**`shadow-level-3` is registered but ABSENT from the shipped stylesheet.**
+That is correct behaviour, not a missing registration: Tailwind tree-shakes the
+theme to the utilities that are consumed, and nothing consumes Level 3. W6
+recorded the same property for `--text-display-hero`, `--text-body-sm` and
+`--text-label-md`. **The AC for task 5.1 — "Token values match the design
+source" — is met at the source level, where the guard reads them; the
+compiled-stylesheet claim that all four levels appear cannot be made against the
+shipped stylesheet, and this artifact does not make it.** See the probe below for
+proof that the value compiles correctly when something references it. The
+values are asserted against `docs/designs/DESIGN.md` by
+`frontend/tests/elevation-scale.test.ts`, which parses the design source rather
+than transcribing a table.
+
+**No stock shadow rule survives in the stylesheet at all** — no `.shadow-sm`,
+`.shadow-lg`, `.shadow-2xl`, `.shadow`, or arbitrary-value shadow. That is
+stronger than the task asked, and it is the *result* of §W7 Test-Directory
+Content Scan, not of the migration alone.
+
+### W7 Cascade Order — proven from two real builds, not reasoned
+
+The task's core argument is that stock shadows out-sort the level tokens, and
+that claim is now **measured rather than asserted**. Two builds were taken from
+the same source, differing only in the presence of the one-line `@source not
+"../tests";` directive, and every emitted shadow rule was located by byte offset:
+
+| offset | selector | origin |
+|---|---|---|
+| 34072 | `.shadow` | stock — test literal |
+| 34320 | `.shadow-2xl` | stock — `DiscrepancyPanel` test literal |
+| 34529 | `.shadow-\[0_0_0_1px_red\]` | stock — arbitrary-value test literal |
+| 34738 | `.shadow-\[0_0_0_1px_rgb\(0_0_0_\/_0\.1\)\]` | stock — arbitrary-value test literal |
+| **34970** | **`.shadow-level-0`** | registered by this unit |
+| **35137** | **`.shadow-level-1`** | registered by this unit |
+| **35349** | **`.shadow-level-2`** | registered by this unit |
+| **35562** | **`.shadow-level-3`** | registered by this unit, unconsumed |
+| 35776 | `.shadow-lg` | stock — `Navbar` test literal |
+| 36032 | `.shadow-sm` | stock — test literal |
+| 45581 | `.hover\:shadow-level-1:hover` | registered by this unit |
+| 45806 | `.hover\:shadow-sm:hover` | stock — test literal |
+| 53495 | `.md\:shadow-lg` | stock — test literal |
+| 53776 | `.md\:group-hover\:shadow-lg:is(:where(.group):hover *)` | stock — test literal |
+
+(offsets from `.next/static/chunks/2p2-2tc3lhodv.css`, **69,358 bytes**, built
+with the directive removed; the shipped build is `0tx0p9w3y3gc3.css`, **66,327
+bytes**)
+
+**The order is alphabetical, and it confirms the hazard exactly as predicted:**
+`.shadow-sm` at **36032** lands **895 bytes after** `.shadow-level-1` at
+**35137**. Equal specificity, same `@layer utilities`, so the later rule wins —
+unconditionally. `.shadow-lg` (35776) likewise post-dates every level token.
+`.shadow-level-3` at 35562 carries
+`0px 16px 36px -6px var(--tw-shadow-color,#0f172a2e)`, proving the registered
+value compiles byte-for-byte and is not dropped for being unconsumed in the
+*theme* — it is only absent from the shipped stylesheet because the test-scan
+exclusion removes the sole reference that would have kept it alive.
+
+**Both builds are reproducible and the probe is reversible.** The directive was
+removed, built, measured, and restored; `app/globals.css` returns to
+SHA-256 `385CD3F8…B477CB6` and the rebuild reproduces `0tx0p9w3y3gc3.css` at
+66,327 bytes exactly. Nothing in the shipped tree is a probe artifact.
+
+### W7 Test-Directory Content Scan — a defect this unit introduced and then fixed
+
+The first build after the migration still emitted `.shadow-sm`, `.shadow-lg`,
+`.shadow-2xl`, `.shadow`, `.hover\:shadow-sm:hover`, `.md\:shadow-lg`,
+`.md\:group-hover\:shadow-lg` and two arbitrary-value shadow rules — **from no
+`.tsx` at all**. Tailwind v4's automatic content detection scans the whole
+project outside `.gitignore`, which includes `frontend/tests/**`, so the
+guard's own fixture strings and its own docblock examples were being compiled
+into the production stylesheet as dead CSS.
+
+That is a self-inflicted defect with two bad edges: the shipped stylesheet grew
+3,031 bytes of rules no element can match, and — worse — it destroyed the
+evidence this unit depends on. A reviewer grepping the built CSS for
+`shadow-sm` would find it, and could not tell whether a real component still
+used it.
+
+Fixed with one line, `@source not "../tests";` after the `@import`s. The
+before/after is measured above, not estimated: **10 shadow-related rules and 3
+display rules removed, 69,358 → 66,327 bytes.** The 10 were 9 stock rules
+(`.shadow`, `.shadow-2xl`, both arbitrary-value rules, `.shadow-lg`,
+`.shadow-sm`, `.hover\:shadow-sm:hover`, `.md\:shadow-lg`,
+`.md\:group-hover\:shadow-lg`) plus the unconsumed `.shadow-level-3`; the 3
+display rules were `.inline`, `.invisible` and `.table`, which a pre-existing
+test file was also injecting. **None of the 13 is referenced by any `.tsx` in
+`app/` or `components/`** — the guard's clean 34/34 is the proof, and the build
+stayed green throughout with an unchanged route table.
+
+An earlier revision of this section claimed a "739 → 726 emitted selectors"
+count. **That figure has been removed because it could not be reproduced** —
+neither top-level rule counts (118 before, 118 after), total braces (852), nor
+comma-split selector tokens yield it under any standard definition. The
+byte deltas and the named 13 selectors above are reproducible and are what the
+section now rests on.
+
+**This is a project-level configuration change, not an elevation change, and
+it is the one edit in this unit that a reviewer should look at hardest.** It
+is a net removal of dead CSS and it makes the compiled stylesheet an honest
+record of the app, but it also means **any class literal that appears only in
+a test file no longer emits a utility.** No such dependency exists today —
+every class the app renders is in a `.tsx`. If the orchestrator prefers to
+revert it, the alternative is to split the guard's fixture strings so
+Tailwind's raw-text scanner cannot see them, which is strictly worse: it leaves
+the same landmine for the next test file.
+
+### W7 Citation Drift — the 12-site map did not describe the code
+
+Task 5.2 named 12 sites. Measured against the tree, the map was wrong in five
+distinct ways. Counting units are declared once, as in §W4 Citation Drift: a
+**citation** is one `(file, line)` pair as the task writes it.
+
+| Defect | Count | Detail |
+|---|---|---|
+| Citations that resolved as written | **4** | `StaffKpiRow:73`, `StatusFilterChips:83`, `StatusFilterChips:86`, `DiscrepancyPanel:267` |
+| Citations off by one | **3** | `ProductCard:70` → the class is at **L71**; `cart:145` → the surface is at **L146**; `products/[id]:119` → the surface is at **L120** |
+| Citations naming a non-surface | **5** | `page:277`, `orders:446`, `orders/[id]:568`, `products:373` are all `ring-1 ring-outline-variant` — Bucket B rings from task 3.3, not shadows. `cart:145` and `products/[id]:119` name the line *above* the surface: a `md:col-span-2` grid wrapper and a `<Skeleton>` |
+| Real `shadow-*` usages omitted from the task | **4** | `app/page.tsx:179` + `:180`, `app/products/page.tsx:258/259/276/277` (the four "ring" citations were standing in for these), `Navbar.tsx:115` (`shadow-lg`), and `orders/page.tsx:121` |
+
+**The two `cart` / `products/[id]` off-by-one citations were the dangerous
+ones.** The task's line numbers pointed at a `md:col-span-2` wrapper and a
+`<Skeleton>`. Applying the map literally would have put a card shadow on a
+layout grid and on a loading placeholder, and the guard's per-file counts
+would have been written to match the wrong element.
+
+**Root cause, stated rather than guessed.** Eight of the twelve citations are
+Bucket B ring citations imported from task 3.3. The map was assembled from
+the *boundary* list rather than measured from `shadow-*`, so it inherited that
+list's off-by-one drift and never saw the two `orders/[id]` shadows at all. The
+corrected map is a measurement; the original was a transcription.
+
+**Corrected final site list: 18 sites across 12 files**, in the `tasks.md:5.2`
+table. 14 converted 1:1, 4 added to surfaces that had no shadow
+(`ProductCard:71`, `cart/page.tsx:146`, `products/[id]/page.tsx:120`,
+`ui/card.tsx:14`).
+
+**Two judgment calls, both orchestrator decisions, applied as given:**
+
+1. **`Navbar.tsx:115` → Level 2 by maintainer decision.** The navbar also
+   carries a hardcoded `bg-[#1a1a1a]`, left **untouched** — this change is
+   elevation only, and repointing a background belongs to a unit that names it.
+2. **`orders/[id]:278` → Level 1, not Level 0.** The 32px timeline step dot is
+   a circle, not a surface. Level 0 is `none`, so it would have had no
+   separation from the timeline rail at all. It takes Level 1 because it sits
+   *inside* the Level 1 card at L251 and its shadow exists to separate it from
+   that rail; a level above its container would be incoherent.
+
+### W7 Unmeasured-usage sweep — nothing else was found
+
+The guard scans all 37 `.tsx` files under `app/` and `components/`, so its
+clean result is itself the sweep: **after the migration, zero stock `shadow-*`
+usages exist anywhere in those two trees**, and the level usage count is
+exactly 18 with the per-file split pinned. `lib/` was **not** swept — the task
+scoped the invariant to `app/` and `components/` — but it holds **3** `.tsx`
+files and a full-tree grep finds **zero** `shadow-*` in any of them, so the
+omission is currently harmless. `lib/` is a plausible future home for a
+shadowed primitive; extending the walk to it is a one-line change if the
+orchestrator wants the boundary widened.
+
+21. **W7 deviation — task 5.2's 12-site map does not describe the code, and 18 sites were migrated.** Only 4 of the 12 citations resolved as written; 3 were off by one; 5 named a non-surface; and 4 real `shadow-*` usages were omitted, two of them in `app/orders/[id]/page.tsx`. Root cause: eight of the twelve citations are Bucket B ring citations imported from task 3.3, so the map was transcribed from the boundary list rather than measured from `shadow-*`. Full reconciliation under §W7 Citation Drift. **Two of the citations would have caused visible damage if applied literally** — `cart:145` is a `md:col-span-2` grid wrapper and `products/[id]:119` is a `<Skeleton>`; both would have received a card shadow. `Navbar.tsx:115` was not in the task at all.
+22. **W7 deviation — 446 authored lines against a ~16 forecast (28×), and this time the 400 review budget is breached.** 51 lines are production (17 `globals.css`, 34 class lines across 11 `.tsx`) and 395 is the new guard. W4 deviation 15 predicted this exactly: *"a negative constraint is worth zero lines in a production-line forecast."* Unlike W1–W6, W7 exceeds both the 250 attempt ceiling **and** the 400 review budget, by 46. **This needs a `size:exception` against the review budget, not only the attempt ledger.** The `tasks.md` forecast row has been corrected.
+23. **W7 deviation — one line of project configuration was changed, outside the elevation scope.** `@source not "../tests";` in `frontend/app/globals.css`. Tailwind v4's automatic content detection scans `frontend/tests/**`, so the new guard's own fixture strings and docblock examples were being compiled into the production stylesheet as dead CSS — 9 stock shadow rules, 3 display rules, **3,031 bytes**, from no `.tsx`. The migration alone would have left the compiled-CSS evidence this unit depends on unreadable. Full before/after accounting under §W7 Test-Directory Content Scan, measured across two real builds: **69,358 → 66,327 bytes**, all 13 removed rules named, none referenced by any `.tsx`. **This is a project-level change, not an elevation change**, and the orchestrator should confirm it. Its standing consequence: a class literal that appears **only** in a test file no longer emits a utility. No such dependency exists today.
+24. **W7 discovery — `--shadow-level-3` is registered but never emitted into the shipped stylesheet, so the compiled CSS cannot evidence it on its own.** Tailwind tree-shakes the theme to the utilities actually consumed, and nothing consumes Level 3. Measured, not assumed: in the shipped build `0tx0p9w3y3gc3.css` only `shadow-level-0/1/2` are present; in a probe build with `@source not "../tests"` removed, `.shadow-level-3` appears at offset 35562 carrying `0px 16px 36px -6px var(--tw-shadow-color,#0f172a2e)` — byte-identical to the design source. W6 recorded the same behaviour for `--text-display-hero`, `--text-body-sm` and `--text-label-md`. **A verify report claiming all four levels appear in the shipped CSS is wrong**, and this artifact does not make that claim; it makes the narrower, provable one.
+
 ## Verification Limits (carried forward)
 
 jsdom does not apply Tailwind's compiled output and `@theme` is build-time only. Nothing in this unit is browser verification. The radius swaps and elevation utilities in W6–W8 remain proven by build success plus manual inspection, never by computed style. Every verify report must restate this.
@@ -908,3 +1278,10 @@ jsdom does not apply Tailwind's compiled output and `@theme` is build-time only.
 - **"236" appears in `spec.md:13` and `tasks.md:50` and is not reproducible.** Six counting definitions were measured and none yields 236; see §W6 Count Corrections for the figures and their units. Correct both before `sdd-verify` reads the requirement literally.
 - **The `--radius-*` ramp line span has now moved four times** (`150-156` → `156-162` after W2 → `160-166` after W4 → `193-199` after W6), and W7 will move it again. `tasks.md`'s two citations no longer name a line span at all — they name the tokens `--radius-sm`…`--radius-4xl` inside `@theme inline`, which is the durable form. **This is now applied, not deferred.**
 - **W4's open item on `frontend/tests/control-border.test.ts:18` is now harmless in practice** but still wrong: it says `button.tsx:6` is "three lines above" the site task 3.2 cites, and `12 − 6 = 6`. W6 edited `button.tsx:6` as instructed and the guard passed regardless, which is the point the comment is making. One word remains wrong in a comment; the orchestrator may fold it into the next unit that touches that file.
+- **Stage the new W7 file before settling.** `frontend/tests/elevation-scale.test.ts` is **untracked**, and it is **395 of W7's 446 changed lines** — so staging it changes the measured total, not just its classification, exactly as W4's and W6's new test files did. W2, W4 and W6 each hit the `untracked inventory changed` rejection for this reason. `git add frontend/tests/elevation-scale.test.ts` before settling.
+- **W7 needs a `size:exception` against the 400 review budget**, not only the attempt ledger: 446 authored lines against a ~16 forecast is 28× and breaches the 400 budget by 46. This is the first unit where the *review* budget is at risk rather than only the attempt ceiling. See deviation 22 and the corrected `tasks.md` forecast row.
+- **W7 needs a maintainer decision on `@source not "../tests";`.** It is a project-level content-scan change wearing an elevation diff, and the orchestrator should confirm it rather than inherit it. See deviation 23 for the before/after accounting and for the standing consequence (a class literal that appears only in a test file no longer emits a utility).
+- **W7 visual verification is outstanding and cannot be closed in this environment.** No browser is available, so nothing in this unit observed a rendered shadow, a computed style, or a pixel. The compiled stylesheet is evidence about *emission*, not *paint*. `sdd-verify` should either run the `npm run dev` harness against `/`, `/cart` and a product page, or record the gap explicitly. This is now the fourth unit carrying that item.
+- **W7's Level-3 compiled-CSS claim is unprovable as the task wrote it.** Task 5.1 asked for confirmation that the built stylesheet contains `.shadow-level-0..3`; it cannot, because nothing consumes Level 3 and Tailwind tree-shakes it. Proven from a probe build that `.shadow-level-3` does compile, at offset 35562, carrying the design's exact value. See deviation 24 and §W7 Cascade Order. **What the shipped stylesheet proves is `shadow-level-0/1/2` plus `hover:shadow-level-1`, and that zero stock shadow rules survive. A verify report must not claim all four levels appear in the shipped CSS.**
+- **An unreproducible number was removed from this artifact rather than shipped.** An earlier revision recorded the `@source not` fix as "739 → 726 emitted selectors". No standard counting method reproduces either figure — top-level rules, total braces and comma-split selector tokens all disagree. The named 13 removed rules and the 69,358 → 66,327 byte deltas are reproducible and are what the section now rests on. **No figure in this artifact should be treated as verified unless it can be re-measured from the tree.**
+- **The W7 guard's `baseCounts` helper was folded into a stronger assertion.** An earlier revision pinned the per-file counts with a `Record` equality test that duplicated the `it.each` map. It is replaced by one test that proves the map's values sum to the tree total *and* that no file outside the map holds a level token — strictly more coverage, fewer lines. The map itself is unchanged, so no `tasks.md` citation moves.
