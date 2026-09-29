@@ -182,7 +182,7 @@ export default function Navbar() {
               <>
                 <Link
                   href="/cart"
-                  className="relative flex items-center gap-2 rounded-lg bg-white/10 px-2.5 py-2 transition-colors hover:bg-white/20 sm:px-4"
+                  className="relative flex items-center gap-2 rounded-xl bg-white/10 px-2.5 py-2 transition-colors hover:bg-white/20 sm:px-4"
                 >
                   <ShoppingCart className="size-5" />
                   <span className="hidden text-sm sm:inline">Carrito</span>
@@ -216,7 +216,7 @@ export default function Navbar() {
                   onClick={logout}
                   title="Cerrar sesión"
                   aria-label="Cerrar sesión"
-                  className="flex size-10 items-center justify-center rounded-lg transition-colors outline-none hover:bg-white/10 hover:text-primary focus-visible:ring-3 focus-visible:ring-white/50"
+                  className="flex size-10 items-center justify-center rounded-xl transition-colors outline-none hover:bg-white/10 hover:text-primary focus-visible:ring-3 focus-visible:ring-white/50"
                 >
                   <LogOut className="size-5" />
                 </button>
@@ -235,7 +235,7 @@ export default function Navbar() {
               ref={menuToggleRef}
               aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
               aria-expanded={mobileMenuOpen}
-              className="flex size-10 items-center justify-center rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-white/50 lg:hidden"
+              className="flex size-10 items-center justify-center rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-white/50 lg:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? (

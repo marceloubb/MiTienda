@@ -53,20 +53,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <div>
                   <h3 className="font-bold mb-4 text-[#e65c00]">Productos</h3>
                   <ul className="space-y-2 text-sm text-gray-400">
-                    <li><a href="#" className="hover:text-white transition-colors">Herramientas</a></li>
-                    <li><a href="#" className="hover:text-white transition-colors">Electricidad</a></li>
-                    <li><a href="#" className="hover:text-white transition-colors">Plomería</a></li>
-                    <li><a href="#" className="hover:text-white transition-colors">Pinturas</a></li>
+                    <li><a href="#" className="hover:text-white transition-colors focus-visible:ring-3 focus-visible:ring-white focus-visible:rounded-sm">Herramientas</a></li>
+                    <li><a href="#" className="hover:text-white transition-colors focus-visible:ring-3 focus-visible:ring-white focus-visible:rounded-sm">Electricidad</a></li>
+                    <li><a href="#" className="hover:text-white transition-colors focus-visible:ring-3 focus-visible:ring-white focus-visible:rounded-sm">Plomería</a></li>
+                    <li><a href="#" className="hover:text-white transition-colors focus-visible:ring-3 focus-visible:ring-white focus-visible:rounded-sm">Pinturas</a></li>
                   </ul>
                 </div>
 
                 <div>
                   <h3 className="font-bold mb-4 text-[#e65c00]">Ayuda</h3>
                   <ul className="space-y-2 text-sm text-gray-400">
-                    <li><a href="#" className="hover:text-white transition-colors">Centro de Ayuda</a></li>
-                    <li><a href="#" className="hover:text-white transition-colors">Envíos</a></li>
-                    <li><a href="#" className="hover:text-white transition-colors">Devoluciones</a></li>
-                    <li><a href="#" className="hover:text-white transition-colors">Garantías</a></li>
+                    <li><a href="#" className="hover:text-white transition-colors focus-visible:ring-3 focus-visible:ring-white focus-visible:rounded-sm">Centro de Ayuda</a></li>
+                    <li><a href="#" className="hover:text-white transition-colors focus-visible:ring-3 focus-visible:ring-white focus-visible:rounded-sm">Envíos</a></li>
+                    <li><a href="#" className="hover:text-white transition-colors focus-visible:ring-3 focus-visible:ring-white focus-visible:rounded-sm">Devoluciones</a></li>
+                    <li><a href="#" className="hover:text-white transition-colors focus-visible:ring-3 focus-visible:ring-white focus-visible:rounded-sm">Garantías</a></li>
                   </ul>
                 </div>
 
@@ -91,9 +91,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   © 2026 MiTienda. Todos los derechos reservados.
                 </p>
                 <div className="flex gap-4 text-2xl">
-                  <a href="#" className="hover:scale-110 transition-transform">📘</a>
-                  <a href="#" className="hover:scale-110 transition-transform">📷</a>
-                  <a href="#" className="hover:scale-110 transition-transform">🐦</a>
+                  <a href="#" className="hover:scale-110 transition-transform focus-visible:ring-3 focus-visible:ring-white focus-visible:rounded-sm">📘</a>
+                  <a href="#" className="hover:scale-110 transition-transform focus-visible:ring-3 focus-visible:ring-white focus-visible:rounded-sm">📷</a>
+                  <a href="#" className="hover:scale-110 transition-transform focus-visible:ring-3 focus-visible:ring-white focus-visible:rounded-sm">🐦</a>
                 </div>
               </div>
             </div>

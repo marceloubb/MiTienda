@@ -348,9 +348,7 @@ function DeliveryTimeline({ order }: { order: Order }) {
                     <div
                       className={cn(
                         "relative z-10 mt-4 flex items-start gap-3 rounded-xl p-3 ring-1",
-                        order.status === "cancelled"
-                          ? "bg-error/10 ring-error/30"
-                          : "bg-error/10 ring-error/30"
+                        "bg-error/10 ring-error/30"
                       )}
                     >
                       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-error text-on-error">
