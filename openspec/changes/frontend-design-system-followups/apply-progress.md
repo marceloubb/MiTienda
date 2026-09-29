@@ -5,7 +5,7 @@
 **Branch**: `feat/vibrant-redesign-slice5-2fa`
 **Chain strategy**: `stacked-to-main`
 
-## Status: W1, W3, W2, W4, W6, W7 and W8 complete (W6 including the cascade correction); W5a-W5c pending
+## Status: W1, W3, W2, W4, W6, W7, W8 and W5a complete; W5b-W5c pending
 
 | Unit | PR | State | Commit |
 |---|---|---|---|
@@ -17,9 +17,10 @@
 | W6 | PR 5 | **done, `settle` still blocked** | `51bf97e` + `db14775` (docs) |
 | W7 | PR 6 | **done, `settle` still blocked** | `40801e4` + `9a2dd7d` + `10f55fc` (docs) |
 | W8 | PR 7 | **done, `settle` still blocked** | `6bb9e4a` + this commit (docs) |
-| W5a/W5b/W5c | PR 8–10 | pending — **next objective to open** | — |
+| W5a | PR 8 | **done, `settle` still blocked** | `db12ca3` |
+| W5b/W5c | PR 9–10 | pending — **next objective to open** | — |
 
-W6, W7 and W8 are committed. None is `settle`d: `gentle-ai.exe` is blocked by
+W6, W7, W8 and W5a are committed. None is `settle`d: `gentle-ai.exe` is blocked by
 Windows App Control ("Una directiva de Control de aplicaciones bloqueó este
 archivo"), so `sdd-attempt` is unavailable in this environment. The W7 and W8
 `size:exception` requirements below are consequently unrecordable, and every
@@ -1373,6 +1374,118 @@ scope-shape failure. Deviation 15 predicted this for W4 and it repeated twice
 more. **Future forecasts for units of this shape should count the guard
 explicitly or not claim a production-line figure at all.**
 
+## W5a Files Changed (PR 8 - tasks 7.1-7.2)
+
+| File | Change | Lines |
+|---|---|---|
+| `backend/users/authentication.py` | `TOTP_EXEMPT_PATHS` constant + gate condition narrowed | +8 / -1 |
+| `backend/users/tests.py` | 3 cases added to the existing `TwoFAGateTests` | +42 |
+
+Total: 2 files, 53 authored lines. No frontend files touched.
+
+## W5a Verification Results (PR 8)
+
+| Command | Result |
+|---|---|
+| `manage.py test users.tests.TwoFAGateTests` (before fix) | **RED** — 7 ran, 1 failed, `401 != 200` |
+| `manage.py test users.tests.TwoFAGateTests` (after fix) | **OK** — 7/7 |
+| `manage.py test` (full backend suite) | **OK** — 188/188, 1 skipped (pre-existing) |
+
+The full suite takes ~292s and exceeds the default 120s tool timeout; it must be
+given a longer timeout rather than being reported as inconclusive.
+
+## W5a Evidence (PR 8 - tasks 7.1-7.2)
+
+### The defect was real, proven by RED against the real code
+
+Tests were added first, the fix second. Result: **7 tests ran, exactly one failed**
+— `test_gated_user_can_logout`, `AssertionError: 401 != 200`. The other two passed
+in the same run, which is what makes the evidence meaningful rather than
+incidental: a gated admin really did receive 401 on their own logout, and the
+allowlist-resolution and profile-gating assertions were already non-vacuous.
+
+Had the tests been written and the fix applied in one pass, this unit would carry
+the same claim as every other unit in the change — "tests pass" — with no
+evidence that any of them could fail.
+
+### `TwoFAGateTests` already existed, and re-declaring it would have silently deleted four tests
+
+Task 7.2 said "Add `TwoFAGateTests` to `backend/users/tests.py`". The class was
+already there at `tests.py:673` with four cases covering the gate's own
+behaviour.
+
+**Python rebinds a duplicate class name silently.** A second `class TwoFAGateTests`
+later in the module shadows the first; the four existing tests would stop being
+collected, and the suite would report **7 passed instead of 4**, with no error, no
+warning, and a plausible-looking count. The most dangerous version of this defect
+is the one that makes the suite look healthy.
+
+The three cases were therefore added to the existing class, reusing its `setUp`
+(`self.admin` via `_role_user('gated', 'admin')`, `self.client`, `self.token`) and
+its `_confirmed_device()` helper. Total went 4 → 7, and the count is the
+arithmetic the task expected.
+
+This is the first task citation in the change that pointed at something which
+already existed, and it is the one class of citation that fails by *reducing*
+test coverage while every signal stays green.
+
+### The third case deliberately overlaps an existing test, and that is the point
+
+`test_gated_user_still_gated_on_profile` is nearly identical to the pre-existing
+`test_missing_totp_code_rejected_with_totp_required`. It was kept anyway, and the
+reason is recorded in a comment on the test:
+
+> It pins the exemption to the allowlist. If the gate is ever widened instead of
+> path-scoped, this is the test that fails.
+
+The tempting "fix" for a reviewer's duplicate-looking test is to delete it. Doing
+so removes the only assertion that distinguishes *path-scoped exemption* from
+*disabled gate* — and a disabled gate is a security regression that every other
+test in the class would still pass. The overlap is the coverage.
+
+### The allowlist test imports the production constant, and that is load-bearing
+
+`test_exempt_paths_resolve_to_logout_view` iterates `TOTP_EXEMPT_PATHS` rather
+than the literal `'/api/users/logout/'`.
+
+A test that repeated the path string would pass under both a correct allowlist
+and an **empty** one — the loop body would never execute and the test would go
+green reporting that nothing was wrong. Importing the constant means the
+assertion is over production state, so emptying the allowlist is visible as the
+loss of coverage it actually is.
+
+`Resolver404` fails by name rather than by assertion error, so a dead entry
+reports which path is a false promise of exemption.
+
+### Narrowed the condition, did not add an early return
+
+The exemption narrows the existing `if` at L58 into a parenthesized two-line
+condition. An early `return` placed before the gate would have exempted the path
+from **both** checks, including the TTL check at L56 — so an expired token could
+have logged out. The task's own wording ("the TTL check at L56 stays outside the
+exemption") is a constraint about *how*, not just *what*, and the one-line
+satisfied is the narrowing.
+
+`frozenset` of exact paths rather than views or prefixes, so the allowlist cannot
+grow by accident into a namespace. The comment states the justification rule for
+any future entry: logging out is exempt because it *reduces* exposure.
+
+### The first unit in the change with no visual-verification caveat
+
+W1 through W8 all carry an open item that a browser was unavailable and computed
+style or paint was never observed. **W5a has none.** The behaviour is server-side
+and `manage.py test` exercises it directly at the request level — the RED result
+is a 401 produced by the real authentication path, and the green result is a 200
+with the token row deleted from the database. There is no layer between the
+assertion and the behaviour it claims.
+
+That also makes the forecast comparison honest in a way the frontend units could
+not be: 53 authored lines against a ~95 forecast, **0.56×**, the first unit in
+the change to come in under. It under-ran because the forecast assumed a new test
+class needed scaffolding and one already existed. **Forecast effort by artifact
+age, not task count** — a citation into already-written code underruns, a citation
+into unwritten code overruns.
+
 ## Verification Limits (carried forward)
 
 jsdom does not apply Tailwind's compiled output and `@theme` is build-time only. Nothing in this unit is browser verification. The radius swaps and elevation utilities in W6–W8 remain proven by build success plus manual inspection, never by computed style. Every verify report must restate this.
@@ -1389,7 +1502,9 @@ jsdom does not apply Tailwind's compiled output and `@theme` is build-time only.
 - **RESOLVED 2026-09-29 - the maintainer approved `@source not "../tests";`.** The orchestrator flagged it as a project-level content-scan change arriving inside an elevation diff and asked for confirmation rather than inheriting it silently. The maintainer approved proceeding. It is retained, and its standing consequence is unchanged: a class literal that appears only in a test file no longer emits a utility. See deviation 23.
 - **W8's two claims are unenforced — no guard exists for this unit.** Task 6.1's AC is "Footer Focus Visibility", and nothing checks it. Adding a twelfth footer anchor without a focus ring fails no test, and `sdd-verify` would have to catch it by reading. The sharper risk is the ring **colour**: this unit deliberately departs from `DESIGN.md:223` to `ring-white` because the design's `#1E40AF` measures 2.00:1 on this surface. A future reader seeing `ring-white` where the design says `#1E40AF` would reasonably "correct" it back and silently ship a focus indicator that fails the requirement it was added to satisfy. Both are one-line guard risks. **Raised rather than added**, because W8's approved forecast carried no guard and widening scope is not the implementer's call; see §W8 Evidence for the measured contrast figures a guard would assert.
 - **W8 visual verification is outstanding and cannot be closed here.** No browser is available, and `:focus-visible` is specifically a real-keyboard-focus state that jsdom does not apply. Nothing in this unit observed a painted ring. The 2.00:1-versus-17.40:1 measurement is arithmetic about the colour values, not proof that a ring is visible on screen. This is the **fifth** consecutive unit carrying that item, and it is the one where it matters most: the entire point of the change is a focus indicator that a keyboard user can see.
-- Design §"Spec Placement Notes" archive-order questions remain open and untouched, as instructed. `frontend-vibrant-redesign` was not modified.
+- **W5a's `settle` is blocked for the same reason as W6, W7 and W8** — Windows App Control refuses to execute `gentle-ai.exe`, so `sdd-attempt` is unavailable. W5a created no new file, so unlike W4, W6 and W7 there is nothing to stage and the `untracked inventory changed` rejection cannot arise. Its evidence rests on commit `db12ca3` and the sections above.
+- **W5a's exemption is path-scoped, and that scoping is now the security boundary rather than a convenience.** `TOTP_EXEMPT_PATHS` has exactly one entry, and every future entry needs the same justification: the endpoint must *reduce* exposure, not merely be inconvenient without a code. A future task that adds, say, `token/refresh/` to this allowlist would be adding a credential-issuing endpoint to a security exemption, and no test in the suite would object — `test_exempt_paths_resolve_to_logout_view` checks that each entry resolves to `LogoutView`, so a non-logout entry would fail there, but the failure would read as a URL problem rather than a security one. **Read that test's failure message as a security signal.**
+- **Design §"Spec Placement Notes" archive-order questions remain open and untouched, as instructed.** `frontend-vibrant-redesign` was not modified.
 - `tasks.md:88`'s W2 rollback boundary is incomplete — it omits `frontend/tests/contrast.test.ts`. Corrected in `tasks.md` alongside the measured line count; see deviation 9.
 - **`tasks.md:89`'s W4 row is now corrected**, matching the treatment W2's row already received at `tasks.md:88`: the authored-lines cell reads the measured **195** (decomposed under Deviation 15) instead of the `~17` forecast, and the rollback-boundary cell now names `frontend/tests/control-border.test.ts` and `frontend/tests/contrast.test.ts`. Nothing about W4 is deferred.
 - **`frontend/tests/control-border.test.ts:18` contains one wrong word — deferred, not fixed.** It says `button.tsx:6` is "three lines above" the site task 3.2 cites; task 3.2 cites `button.tsx:12`, so it is **six** lines above. This re-run's brief forbids touching source files, and the attempt is at 195 of 200, so the correction is left for the orchestrator. It is a comment only — the guard's behaviour and all 65 tests are unaffected. See deviation 16.
