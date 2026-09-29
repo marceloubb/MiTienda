@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Cart, UserRole, APIError } from '@/lib/api';
-import { getProfile, getCart, logout as apiLogout, onTokenChange } from '@/lib/api';
+import { getProfile, getCart, logout as apiLogout, onTokenChange, onTOTPRequired } from '@/lib/api';
+import TotpChallengeDialog from '@/components/TotpChallengeDialog';
 
 interface AuthContextType {
   user: User | null;
@@ -66,6 +67,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Global 2FA gate. Registered next to the token-change effect so both
+  // session-level signals the API client raises are owned by the provider, not
+  // by whichever component happened to make the failing request. Mounting the
+  // resolver here is what guarantees no authenticated surface is the only one
+  // that can answer `totp_required`.
+  //
+  // The first gated request wins the dialog; later concurrent ones replace the
+  // stored replay. Their callers stay parked (api.ts returns a never-settling
+  // promise) rather than erroring, so a burst of parallel 401s surfaces as one
+  // challenge instead of a wall of failed requests.
+  const [totpRetry, setTotpRetry] = useState<(() => Promise<unknown>) | null>(null);
+  useEffect(() => {
+    return onTOTPRequired((retry) => {
+      setTotpRetry(() => retry);
+    });
+  }, []);
+
   function login(userData: User) {
     // The backend already set the httpOnly cookie in the login/register
     // response; here we only restore the client state.
@@ -108,6 +126,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{ user, cart, isLoading, login, logout, updateCart, refreshProfile }}
     >
       {children}
+      {/* The dialog is the session's only resolver for the 2FA gate. It renders
+          after `children` so it stacks above any page-level surface, and it
+          carries no cancel: a gated session's way out is `logout()`, which W5a
+          made reachable without a code. */}
+      <TotpChallengeDialog
+        open={totpRetry !== null}
+        retry={totpRetry}
+      />
     </AuthContext.Provider>
   );
 }

@@ -15,8 +15,18 @@ import { parseStylesheet, readRootToken } from './support/css-tokens';
  * over the whole tree and not over the 15 sites.
  *
  * Sites are pinned as per-file class counts, never as line numbers: W6 edits
-  * `components/ui/button.tsx:6`, six lines above the site task 3.2 cites, and
+ * `components/ui/button.tsx:6`, six lines above the site task 3.2 cites, and
  * a line-pinned guard would fail on a later unit's correct change.
+ *
+ * W5b added a legitimate 16th boundary and had to be registered here.
+ * `components/TotpChallengeDialog.tsx` reuses the same module-level `inputClass`
+ * shape as `app/login/page.tsx`, so it is a real Bucket A site and not a
+ * violation — but "real" is a judgement, and the guard cannot tell a new site
+ * from a stray repoint. **A new boundary is therefore expected to fail this
+ * guard until it is counted here. That failure is the guard working**: the
+ * alternative is a guard that only ever recognises the boundaries it was written
+ * against. The Bucket B sweep below is what actually catches an illegitimate
+ * repoint, and it stays green either way.
  *
  * Verification limit: jsdom does not apply Tailwind's compiled output and
  * `@theme` is build-time only. Nothing here is browser verification.
@@ -74,6 +84,7 @@ function siteCounts(sources: Map<string, string>, className: string): Record<str
 const CONTROL_BOUNDARIES = {
   'app/checkout/page.tsx': 2,
   'app/login/page.tsx': 1,
+  'components/TotpChallengeDialog.tsx': 1,
   'app/page.tsx': 1,
   'app/products/page.tsx': 4,
   'app/profile/page.tsx': 3,

@@ -124,6 +124,38 @@ export function isTOTPCodeRequired(error: unknown): boolean {
   return error instanceof APIError && error.status === 401 && error.code === 'totp_required';
 }
 
+// --- Global 2FA challenge ---------------------------------------------------
+//
+// The login page resolves the gate inline (its own `TOTPChallengeStep`), because
+// at that point no session exists yet and the challenge is a step of the login
+// form rather than an interruption. Every OTHER surface can be gated
+// mid-session: a cart request, a profile save, an admin page. If each of those
+// had to own a challenge, no authenticated surface could be the only resolver —
+// and a user in a fresh tab whose cookie outlived their TOTP code would be
+// locked out of the app entirely, with no way back.
+//
+// So the API client raises the gate to whoever registered a handler, and replays
+// the original request once a code is supplied. `retry` is a closure the handler
+// controls; the client never stores it, because it is only valid while the
+// dialog that owns it is mounted.
+
+type TOTPRequiredHandler = (retry: () => Promise<unknown>) => void;
+
+let totpRequiredHandler: TOTPRequiredHandler | null = null;
+
+/**
+ * Register a handler invoked when the backend answers 401 `totp_required` on any
+ * request. Returns an unregister function for effect cleanup. Mirrors
+ * `onTokenChange`'s contract exactly: a single module-level slot, last
+ * registration wins, unregistering only clears if still the same handler.
+ */
+export function onTOTPRequired(handler: TOTPRequiredHandler): () => void {
+  totpRequiredHandler = handler;
+  return () => {
+    if (totpRequiredHandler === handler) totpRequiredHandler = null;
+  };
+}
+
 /**
  * Resolve the `X-TOTP` header for an endpoint: an explicit one-off code wins
  * over the session code, and the credential endpoints never get one.
@@ -239,9 +271,23 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
   } catch (error) {
     // Intercept the 2FA gate BEFORE the refresh policy. A `totp_required` 401
     // means the session is valid but the second factor is missing, so
-    // refreshing would 401 identically and tear the session down. Surface it
-    // to the caller instead — the login page turns it into a TOTP challenge.
-    if (isTOTPCodeRequired(error)) throw error;
+    // refreshing would 401 identically and tear the session down.
+    if (isTOTPCodeRequired(error)) {
+      // The login page handles its own challenge (no session exists yet, so it
+      // calls the endpoints directly rather than through this path). If a login
+      // probe ever did route here with no handler mounted, rethrow unchanged and
+      // let the caller decide — swallowing it would break a working flow.
+      if (!totpRequiredHandler) throw error;
+      // Hand over a one-shot replay of the failed request. The handler decides
+      // when to call it (after the user enters a code), and the client keeps no
+      // reference, so a dismissed dialog cannot replay a stale request later.
+      totpRequiredHandler(() => performFetch<T>(endpoint, options));
+      // Park forever: this caller's promise must not resolve or reject until the
+      // replay succeeds. Returning a never-settling promise is what lets several
+      // concurrent gated requests all resolve through the single mounted dialog
+      // instead of each racing to open their own challenge.
+      return new Promise<never>(() => {});
+    }
 
     const status = error instanceof APIError ? error.status : undefined;
     const canRetry =
@@ -321,12 +367,17 @@ export async function register(data: {
 }
 
 export async function logout() {
-  // The logout request is itself token-authenticated and the backend 2FA gate
-  // (`_validate_expiry_and_2fa`) has no exemption for this endpoint, so a gated
-  // session must still present its code. Clear only AFTER the request is sent:
-  // dropping the code first makes logout 401, the httpOnly cookie survives in
-  // the browser and the token stays valid server-side until it expires — which
-  // is not a logout at all.
+  // The backend 2FA gate now exempts `/users/logout/` (see
+  // `TOTP_EXEMPT_PATHS` in `users/authentication.py`), so this request no longer
+  // needs the code at all and a gated user can always sign out.
+  //
+  // The code is still cleared only AFTER the request is sent, and that ordering
+  // is kept deliberately. `/users/logout/` is in `NON_RETRYABLE_ENDPOINTS`, so a
+  // transient failure here does not retry; clearing first would drop the code
+  // from a session the server may still hold, and the user would land on a page
+  // that thinks it signed them out while the token stays valid until it expires.
+  // The exemption removed the reason the code was required here — it did not
+  // change which order is safer.
   try {
     return await fetchAPI<{ message: string }>('/users/logout/', {
       method: 'POST',

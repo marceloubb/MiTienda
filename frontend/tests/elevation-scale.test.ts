@@ -92,8 +92,15 @@ const LEVEL_TOKENS: readonly string[] = LEVELS.map((level) => `shadow-level-${le
 /** Route directories whose names hold literal square brackets. */
 const BRACKET_FILES = ['app/orders/[id]/page.tsx', 'app/products/[id]/page.tsx'] as const;
 
-/** Total `shadow-*` class-token occurrences across the tree, asserted at 18. */
-const TOTAL_USAGES = 18;
+/**
+ * Total `shadow-*` class-token occurrences across the tree, asserted at 19.
+ *
+ * W5b added `components/TotpChallengeDialog.tsx`, whose modal surface takes
+ * `shadow-level-2` — the same elevation as `DiscrepancyModal`, the other modal
+ * in the app. The count moved 18 → 19 for that one site, and the walk's `.tsx`
+ * file total moved 37 → 38.
+ */
+const TOTAL_USAGES = 19;
 
 const STRING_LITERAL = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g;
 
@@ -246,14 +253,19 @@ const LEVEL_SITES: Readonly<Record<string, number>> = {
   'components/admin/DiscrepancyPanel.tsx': 1,
   'components/admin/StaffKpiRow.tsx': 1,
   'components/admin/StatusFilterChips.tsx': 2,
+  'components/TotpChallengeDialog.tsx': 1,
   'components/ui/card.tsx': 1,
 };
 
 describe('the walk reaches every file, brackets included', () => {
-  it('discovers 37 .tsx files across app/ and components/', () => {
+  it('discovers 38 .tsx files across app/ and components/', () => {
     // Without this, a walk that reached zero files would satisfy every
     // "no stock shadow" assertion below.
-    expect(TREE).toHaveLength(37);
+    //
+    // An absolute count, deliberately: it is a floor for a walk that returned
+    // nothing, and it fails loudly when a unit adds a file. A newly added file
+    // is expected to bump this number once, on the unit that adds it (W5b did).
+    expect(TREE).toHaveLength(38);
   });
 
   it.each(BRACKET_FILES)('%s is in the discovered set', (file) => {
@@ -293,7 +305,7 @@ describe('the four levels are registered with the design source values (task 5.1
 });
 
 describe('zero stock shadow utilities survive (task 5.2)', () => {
-  it('the whole tree holds 18 shadow usages and every one is a level token', () => {
+  it('the whole tree holds 19 shadow usages and every one is a level token', () => {
     const found = allUsages();
     expect(found, 'the discovered usage count moved; re-measure before trusting the levels').toHaveLength(
       TOTAL_USAGES,
