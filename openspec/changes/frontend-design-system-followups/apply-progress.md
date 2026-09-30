@@ -19,7 +19,19 @@
 | W8 | PR 7 | **done, `settle` still blocked** | `6bb9e4a` + this commit (docs) |
 | W5a | PR 8 | **done, `settle` still blocked** | `db12ca3` |
 | W5b | PR 9 | **done, `settle` still blocked** | `79c8900` |
-| W5c | PR 10 | pending — **next objective to open** | — |
+| W5c | PR 10 | **done** | `076211a` + `95da98f` (docs) |
+| W5d | PR 11 | **done** | `fab1e5b` + `e2a093b` (docs) |
+
+**CORRECTION 2026-09-30 (verify round 3, drift).** This table's W5c row still read
+`pending - next objective to open` while the status line above it already listed W5c
+*and* W5d as complete, and W5d had no row at all. Both work units landed in `076211a`
+and `fab1e5b`. The assertions are now rows.
+
+The five rows above that read ``done, `settle` still blocked`` (W6, W7, W8, W5a, W5b)
+are **unverified** and are deliberately not touched here: whether each of those ledgers
+was still blocked on the day of writing is not re-derivable from the current tree, and
+asserting either answer without evidence would repeat the defect this change was failed
+on twice. Treat those five as open questions, not as facts.
 
 W6, W7, W8 and W5a are committed. None is `settle`d: `gentle-ai.exe` is blocked by
 Windows App Control ("Una directiva de Control de aplicaciones bloqueó este
@@ -459,6 +471,12 @@ longer matches. Neither fixture writes the real stylesheet.
 
  FAIL  tests/control-border.test.ts > Bucket A: exactly 15 control boundaries carry the token (task 3.2) > the whole
 tree holds 15 and no other file holds one
+**NOTE (added 2026-09-30):** the `exactly 15` / `holds 15` strings in this failure
+transcript are the **test names as they read when this failure happened**, and they were
+correct then. Do not "correct" them to 16 — this block is a verbatim capture of a W5b
+failure, and editing it would falsify a historical log. The three live strings in
+`frontend/tests/control-border.test.ts` were corrected separately; see that file.
+
 AssertionError: expected { 'app/checkout/page.tsx': 2, …(9) } to deeply equal { 'app/checkout/page.tsx': 2, …(8) }
 - Expected
 + Received
@@ -1425,7 +1443,7 @@ evidence that any of them could fail.
 ### `TwoFAGateTests` already existed, and re-declaring it would have silently deleted four tests
 
 Task 7.2 said "Add `TwoFAGateTests` to `backend/users/tests.py`". The class was
-already there at `tests.py:673` with four cases covering the gate's own
+already there at `tests.py:676` with four cases covering the gate's own
 behaviour.
 
 **Python rebinds a duplicate class name silently.** A second `class TwoFAGateTests`
