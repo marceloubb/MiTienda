@@ -1473,12 +1473,25 @@ reports which path is a false promise of exemption.
 
 ### Narrowed the condition, did not add an early return
 
-The exemption narrows the existing `if` at L58 into a parenthesized two-line
-condition. An early `return` placed before the gate would have exempted the path
-from **both** checks, including the TTL check at L56 — so an expired token could
-have logged out. The task's own wording ("the TTL check at L56 stays outside the
-exemption") is a constraint about *how*, not just *what*, and the one-line
-satisfied is the narrowing.
+The exemption narrows the existing `if` at **L66** into a parenthesized two-line
+condition ending at L67. An early `return` placed before the gate would have exempted
+the path from **both** checks, including the TTL check at **L64** — so an expired token
+could have logged out. The task's own wording (which also cited L56) is a constraint
+about *how*, not just *what*, and the one-line satisfied is the narrowing.
+
+**CORRECTION 2026-09-30 (verify round 2, CRITICAL).** This paragraph originally cited
+the gate at L58 and the TTL check at L56. Both were false when written in `db12ca3`'s
+follow-up `3381fa6`, and are false now: the real positions are **L66-67** and **L64**,
+re-derived from `backend/users/authentication.py` by the orchestrator. `git log` confirms
+that commit `db12ca3` (W5a itself) is the only commit that has ever touched the file, so
+these were pre-change numbers carried into a note that claims to describe the post-change
+code. The file has 80 lines; L58 lands mid-`authenticate` and L56 mid-`try`.
+
+This was rated CRITICAL rather than drift because the note **reasons from** the citation:
+its conclusion is that the TTL check already sits outside the exemption, "so this
+describes the code as written, not a change to make." The conclusion happens to be true,
+but the evidence offered did not support it. Round 1's own report had cited the TTL check
+correctly at L64-65, so the right number was already on disk.
 
 `frozenset` of exact paths rather than views or prefixes, so the allowlist cannot
 grow by accident into a namespace. The comment states the justification rule for
