@@ -80,7 +80,7 @@ function siteCounts(sources: Map<string, string>, className: string): Record<str
   return Object.fromEntries(counts.filter(([, count]) => count > 0));
 }
 
-/** The 15 Bucket A control boundaries, one entry per element. Sum: 15. */
+/** The 16 Bucket A control boundaries, one entry per element. Sum: 16. */
 const CONTROL_BOUNDARIES = {
   'app/checkout/page.tsx': 2,
   'app/login/page.tsx': 1,
@@ -130,12 +130,12 @@ describe('the control-border token (task 3.1)', () => {
   });
 });
 
-describe('Bucket A: exactly 15 control boundaries carry the token (task 3.2)', () => {
+describe('Bucket A: exactly 16 control boundaries carry the token (task 3.2)', () => {
   it.each(Object.entries(CONTROL_BOUNDARIES))('%s holds %i control boundaries', (file, count) => {
     expect(occurrences(read(file), CONTROL_BORDER), file).toBe(count);
   });
 
-  it('the whole tree holds 15 and no other file holds one', () => {
+  it('the whole tree holds 16 and no other file holds one', () => {
     expect(siteCounts(SOURCES, CONTROL_BORDER)).toEqual(CONTROL_BOUNDARIES);
   });
 });
