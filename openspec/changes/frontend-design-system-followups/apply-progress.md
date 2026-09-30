@@ -5,7 +5,7 @@
 **Branch**: `feat/vibrant-redesign-slice5-2fa`
 **Chain strategy**: `stacked-to-main`
 
-## Status: W1, W3, W2, W4, W6, W7, W8, W5a and W5b complete; W5c pending
+## Status: W1, W3, W2, W4, W6, W7, W8, W5a, W5b, W5c and W5d complete; no work unit pending
 
 | Unit | PR | State | Commit |
 |---|---|---|---|
@@ -1819,3 +1819,61 @@ jsdom does not apply Tailwind's compiled output and `@theme` is build-time only.
 - **W7's Level-3 compiled-CSS claim is unprovable as the task wrote it.** Task 5.1 asked for confirmation that the built stylesheet contains `.shadow-level-0..3`; it cannot, because nothing consumes Level 3 and Tailwind tree-shakes it. Proven from a probe build that `.shadow-level-3` does compile, at offset 35562, carrying the design's exact value. See deviation 24 and §W7 Cascade Order. **What the shipped stylesheet proves is `shadow-level-0/1/2` plus `hover:shadow-level-1`, and that zero stock shadow rules survive. A verify report must not claim all four levels appear in the shipped CSS.**
 - **An unreproducible number was removed from this artifact rather than shipped.** An earlier revision recorded the `@source not` fix as "739 → 726 emitted selectors". No standard counting method reproduces either figure — top-level rules, total braces and comma-split selector tokens all disagree. The named 13 removed rules and the 69,358 → 66,327 byte deltas are reproducible and are what the section now rests on. **No figure in this artifact should be treated as verified unless it can be re-measured from the tree.**
 - **The W7 guard's `baseCounts` helper was folded into a stronger assertion.** An earlier revision pinned the per-file counts with a `Record` equality test that duplicated the `it.each` map. It is replaced by one test that proves the map's values sum to the tree total *and* that no file outside the map holds a level token — strictly more coverage, fewer lines. The map itself is unchanged, so no `tasks.md` citation moves.
+
+## W5d Evidence (PR 11 — tasks 8.3, 8.4)
+
+W5d closes the item W5c left open: the parked TOTP caller could not be resumed at all. Task 8.1 is now checked, and the `DJANGO_2FA_ENFORCED` caveat that blocked browser sessions is gone from `docs/DEPLOYMENT.md`.
+
+### RED proven before the fix, against unmodified source
+
+The marker was flipped first and production code was untouched, so the failure was observed rather than assumed:
+
+```
+FAIL tests/totp-challenge.test.tsx > Global TOTP Challenge Resolution (spec: two-factor-auth)
+  > a valid code retries the rejected request and resolves the original caller
+AssertionError: expected 'pending' to be 'resolved' // Object.is equality
+Test Files  1 failed (1)
+     Tests  1 failed | 3 passed (4)
+```
+
+The other three scenarios were unaffected by the flip, which rules out an assertion that was merely mis-wired rather than genuinely blocked.
+
+### The contract as implemented
+
+`api.ts` parks the gated caller behind a **resolve-only deferred** and hands the handler a `TOTPChallenge` of `{ settled, replay, resolve }`. `auth-context.tsx` stores the whole challenge rather than the bare `retry` closure, keeping W5b's `setTotpChallenge(() => challenge)` wrapper so React cannot invoke it as a state updater. The dialog calls `challenge.resolve(await challenge.replay())` on success.
+
+**The deferred never rejects.** A wrong code therefore re-prompts and leaves the caller parked instead of failing the request — that is the spec's requirement, not an oversight, and it is why the naive `return retry()` stays rejected: that shape fires the replay before any code exists *and* rejects the parked caller on a bad code, which breaks scenario 3.
+
+**Preserved deliberately:** rethrow-when-unregistered, the one-shot replay, no cancel path, `clearTOTPCode()` only in the catch, and `app/login/page.tsx`'s own pre-session challenge. 7.7 remains reversed.
+
+### Beyond the task text, on purpose
+
+The dialog now calls `onResolved()` after resolving. `totpChallenge` was previously cleared **only** in the catch, so while nothing could ever succeed that was invisible; the moment the caller resumes, cleared-only-on-failure leaves a live session behind a blocking overlay. This is not in task 8.3's wording and is called out rather than folded in silently.
+
+### Guard status — no adjustment, and none needed
+
+No guard was touched. The dialog's diff contains no `className` literal, and `lib/` and `components/` are both already walked by `control-border` and `elevation-scale`. All four guards stayed green through the full suite. Recorded explicitly because W5b's over-run was caused by exactly this class of adjustment.
+
+### Two prose corrections the marker flip forced
+
+The test file header and the comment above scenario 2 both stated that the test was `it.fails` and that the caller never resumes. Flipping the marker made both false, and this change has already failed its gates on evidence prose. Both were rewritten to describe the defect in the past tense and to record why `return retry()` is not the shape. **The assertion body is unmodified** — only the `it.fails` marker ever changed.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| `npm run test` | `Test Files 6 passed (6)`, `Tests 151 passed (151)`, 0 expected fail |
+| `npm run build` | exit 0, compiled successfully |
+| `npm run lint` | exit 0 |
+| `npx tsc --noEmit` | exit 0 |
+| All four guards | green, unadjusted |
+
+### Line budget — BREACHED, measured, reported
+
+Ceiling 250, measured **285** — 197 in the fix commit, 88 across the docs. Over by 35. The forecast of 90–130 did not hold, and for the same reason W5b missed: the contract change is spread across three production files, and the test file header had grown into a description of the defect rather than of the requirement, so fixing the defect obliged rewriting it. Breakdown: `api.ts` 62, dialog 39, `auth-context.tsx` 27 — all three forecast as small — and 69 of the test-file lines are the header rewrite the marker flip forced. **No assertion was weakened and no coverage was dropped to stay under the line.** The cheaper move, and the one an earlier revision of this section nearly took, was to leave the stale header in place and stay under budget with a claim that had become false.
+
+### Residual risks
+
+- **Visual verification remains outstanding**, for the same reason as every prior unit: jsdom applies neither `:focus-visible` nor a real `autoFocus`, and no browser is available. The dialog's focus behaviour is exercised by types and jsdom only.
+- **A verify report must not describe the gate as proven end to end.** The backend is covered by its own suite and the frontend flow now runs through the real `fetch` boundary, but nothing has observed a rendered dialog or a real `X-TOTP` round trip.
+- **`DJANGO_2FA_ENFORCED=True` is still operator-gated** on every admin having a confirmed device. The browser-suspension blocker is gone; that enrolment precondition is unchanged and is not W5d's to close.
