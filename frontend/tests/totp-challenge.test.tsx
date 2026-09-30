@@ -12,38 +12,39 @@ import { AuthProvider, useAuth } from '@/lib/auth-context';
  * `isTOTPCodeRequired`, the handler dispatch inside `fetchAPI`, the replay
  * closure, and the dialog's own submit path. Only `fetch` is faked.
  *
- * **The load-bearing scenario is #2, and it is RED against shipped code.**
- * W5b made `fetchAPI` return a never-settling `Promise<never>` after handing the
- * replay to the handler, so the test asserts that *the caller resumes* — not
- * that a retry fired, because a "a second request happened" assertion passes
- * against the exact defect below.
+ * **The load-bearing scenario is #2: a valid code must resume the ORIGINAL
+ * caller, not merely fire a retry.** It is a live assertion. It was carried as
+ * `it.fails` — with the body unmodified, so only the pass criterion was inverted
+ * — while the defect below was open; W5d fixed the cause and flipped the marker
+ * back. The inversion was never the requirement.
  *
- * The defect: `frontend/lib/api.ts:284-289` hands the replay to a handler typed
- * `(retry) => void` and then returns `new Promise<never>(() => {})`. An executor
- * that never calls `resolve` cannot be resumed by anything. The replay's result
- * reaches only the dialog's own `await retry()`, which discards it, so **the
- * parked caller's promise never settles at all** — not on success, not on
- * failure. `spec.md` requires that submitting a valid code "retries the rejected
- * request and restores the session"; the retry happens, the restore does not.
- * In production the visible symptom is `AuthProvider.loadProfile()` hanging in
- * its `await getProfile()` forever, so `setIsLoading(false)` in its `finally`
- * never runs and the app sits in its loading state permanently.
+ * The defect W5d fixed: `frontend/lib/api.ts` handed the replay to a handler
+ * typed `(retry) => void` and then returned `new Promise<never>(() => {})`. An
+ * executor that never calls `resolve` cannot be resumed by anything, and the
+ * replay's result reached only the dialog's own `await retry()`, which discarded
+ * it — so **the parked caller's promise never settled at all**, not on success,
+ * not on failure. `spec.md` requires that submitting a valid code "retries the
+ * rejected request and restores the session"; the retry happened, the restore
+ * did not. In production the visible symptom was `AuthProvider.loadProfile()`
+ * hanging in its `await getProfile()` forever, so `setIsLoading(false)` in its
+ * `finally` never ran and the app sat in its loading state permanently.
  *
- * Scenario 2 is therefore written as `it.fails`. The assertion is the spec's,
- * unmodified; `it.fails` only inverts the pass criterion so the requirement
- * stays visible and cannot be lost. It cannot pass vacuously: the moment anyone
- * makes the caller resume, Vitest reports "expected test to fail but it passed".
- * That flip was observed during this unit's RED evidence, so the marker is
- * live rather than theoretical.
+ * Why the obvious fix is wrong, established by probe rather than guessed.
+ * Letting the handler simply `return retry()` fails twice over: it fires the
+ * replay at dispatch time, before any code exists, and it rejects the parked
+ * caller when a code is wrong — exactly what scenario 3 requires not to happen.
+ * The contract that works defers. `api.ts` parks the caller behind a
+ * **resolve-only deferred** and hands the dialog the one-shot replay together
+ * with that resolver; the dialog resolves the parked caller with the replay's
+ * result, and on a wrong code resolves nothing at all — the prompt stays open
+ * and the caller stays parked.
  *
- * Shape of the fix, established by probe rather than guessed. Making the
- * provider's handler simply `return retry()` is WRONG: it fires the replay at
- * dispatch time, before any code exists, and it rejects the parked caller when a
- * code is wrong — which breaks scenario 3, which requires the caller to stay
- * parked. The fix has to defer: the handler returns a promise that the dialog
- * resolves when its replay succeeds, and which stays pending on failure. A
- * probe of that shape turned all four scenarios green. Out of this unit's scope;
- * recorded rather than fixed.
+ * Scenario 2 therefore asserts the whole chain, not just its endpoint: the
+ * caller resumes (`status === 'resolved'`), it resumes **with the profile it
+ * originally asked for** (`value` deep-equals the response), the replay carried
+ * the code, and the code survives for the session. A "a second request happened"
+ * assertion would pass against the exact defect above, which is why it is not
+ * written that way.
  *
  * A gated request parks (or hangs) with no synchronous way to ask, so "the caller
  * has not settled" is asserted by draining the microtask queue and observing the
@@ -230,11 +231,11 @@ describe('Global TOTP Challenge Resolution (spec: two-factor-auth)', () => {
     expect(profiles.at(-1)?.totp).toBeUndefined();
   });
 
-  // Scenario 2 — LOAD-BEARING, and RED against shipped code. See the file
-  // header: the parked caller never resumes, so the spec's "restores the
-  // session" is not met. `it.fails` keeps the requirement asserted and visible
-  // without shipping a red suite; it flips loudly the day the defect is fixed.
-  it.fails('a valid code retries the rejected request and resolves the original caller', async () => {
+  // Scenario 2 — LOAD-BEARING. Carried as `it.fails` while the parked caller
+  // could not resume, and flipped back to a real assertion once W5d fixed the
+  // cause. The body was never modified; see the file header for the contract it
+  // now pins and for why `return retry()` is not the shape.
+  it('a valid code retries the rejected request and resolves the original caller', async () => {
     const backend = installBackend();
     renderApp();
     await screen.findByRole('dialog', { name: DIALOG_NAME });

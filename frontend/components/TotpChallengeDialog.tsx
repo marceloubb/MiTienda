@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { AlertTriangle, Loader2, ShieldCheck } from "lucide-react";
-import { APIError, clearTOTPCode, isTOTPCodeRequired, setTOTPCode } from "@/lib/api";
+import {
+  APIError,
+  clearTOTPCode,
+  isTOTPCodeRequired,
+  setTOTPCode,
+  type TOTPChallenge,
+} from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
 const inputClass =
@@ -22,9 +28,10 @@ const VERIFY_FAILED_ERROR = "No se pudo verificar el código. Inténtalo de nuev
  * gone because the tab was reloaded, or the code window elapsed — where any
  * authenticated request can be gated with no inline resolver.
  *
- * `retry` is the rejected request's own replay, supplied by the API client. The
- * dialog never calls the API directly: it stores the code, then replays. That is
- * what lets one dialog satisfy a caller that was gated mid-flight.
+ * `challenge` carries the rejected request's own replay together with the caller
+ * that was parked when the gate rejected it. The dialog never calls the API
+ * directly: it stores the code, replays, and hands the replay's result back so
+ * the original caller resumes with the data it asked for.
  *
  * There is no cancel path on purpose. A user who cannot produce a code still has
  * `logout()`, which W5a made reachable for exactly this reason — a gated session
@@ -32,30 +39,38 @@ const VERIFY_FAILED_ERROR = "No se pudo verificar el código. Inténtalo de nuev
  */
 export default function TotpChallengeDialog({
   open,
-  retry,
+  challenge,
+  onResolved,
 }: {
   open: boolean;
-  retry: (() => Promise<unknown>) | null;
+  challenge: TOTPChallenge | null;
+  onResolved: () => void;
 }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  if (!open || !retry) return null;
+  if (!open || !challenge) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!retry) return;
+    if (!challenge) return;
     setError("");
     setIsLoading(true);
 
     try {
       // Stored first so the replayed request carries it as X-TOTP.
       setTOTPCode(code);
-      await retry();
-      // Only reached when the replay resolved, i.e. the backend accepted the
-      // code. `clearTOTPCode` must NOT run here: the code now belongs to the
-      // live session and every later request needs it.
+      const result = await challenge.replay();
+      // Resume the caller that was parked when the gate rejected it. Without
+      // this the request replays and the original `getProfile()` / `getCart()`
+      // never settles, so the caller waits forever and the session is never
+      // restored even though the replay succeeded.
+      challenge.resolve(result);
+      // `clearTOTPCode` must NOT run here: the code now belongs to the live
+      // session and every later request needs it. Nor on the way out — the
+      // dialog is only done once the session it gated is running again.
+      onResolved();
     } catch (err) {
       // A wrong or expired code returns the same totp_required 401. Drop it from
       // memory so it is never attached to a later request, and keep the dialog

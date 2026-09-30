@@ -135,11 +135,33 @@ export function isTOTPCodeRequired(error: unknown): boolean {
 // locked out of the app entirely, with no way back.
 //
 // So the API client raises the gate to whoever registered a handler, and replays
-// the original request once a code is supplied. `retry` is a closure the handler
-// controls; the client never stores it, because it is only valid while the
-// dialog that owns it is mounted.
+// the original request once a code is supplied. What crosses the boundary is a
+// `TOTPChallenge`: the one-shot replay plus the caller parked behind it. Both
+// are closures the handler controls; the client keeps no reference beyond the
+// dispatch, because they are only valid while the dialog that owns them is
+// mounted.
 
-type TOTPRequiredHandler = (retry: () => Promise<unknown>) => void;
+/**
+ * One gated request, parked until the challenge resolves it.
+ *
+ * `settled` is the ORIGINAL caller's promise — `getCart()` has to come back with
+ * cart data, not `undefined`. It is resolve-only and never rejects, because the
+ * spec requires a wrong code to leave the prompt open and the session unset: a
+ * failed attempt must re-prompt, never surface as a caller failure.
+ *
+ * `replay` is the rejected request's own replay, one-shot.
+ *
+ * `resolve` hands the parked caller the replay's value. Only the dialog calls
+ * it, and only once its replay resolved — i.e. once the backend accepted the
+ * code.
+ */
+export interface TOTPChallenge {
+  readonly settled: Promise<unknown>;
+  replay: () => Promise<unknown>;
+  resolve: (value: unknown) => void;
+}
+
+type TOTPRequiredHandler = (challenge: TOTPChallenge) => void;
 
 let totpRequiredHandler: TOTPRequiredHandler | null = null;
 
@@ -278,15 +300,29 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
       // probe ever did route here with no handler mounted, rethrow unchanged and
       // let the caller decide — swallowing it would break a working flow.
       if (!totpRequiredHandler) throw error;
-      // Hand over a one-shot replay of the failed request. The handler decides
-      // when to call it (after the user enters a code), and the client keeps no
-      // reference, so a dismissed dialog cannot replay a stale request later.
-      totpRequiredHandler(() => performFetch<T>(endpoint, options));
-      // Park forever: this caller's promise must not resolve or reject until the
-      // replay succeeds. Returning a never-settling promise is what lets several
-      // concurrent gated requests all resolve through the single mounted dialog
-      // instead of each racing to open their own challenge.
-      return new Promise<never>(() => {});
+      // Park this caller behind a resolve-only deferred. The client keeps the
+      // executor and hands the handler only the resolver, so a handler that
+      // returns `undefined` — the `(retry) => void` signature this path used to
+      // expose — can never become this caller's value.
+      let resolveChallenge!: (value: unknown) => void;
+      const settled = new Promise<unknown>((resolve) => {
+        resolveChallenge = resolve;
+      });
+      // Hand over the one-shot replay together with that resolver. The handler
+      // decides when to call the replay (after the user enters a code), and the
+      // client keeps no reference, so a dismissed dialog cannot replay a stale
+      // request later.
+      totpRequiredHandler({
+        settled,
+        replay: () => performFetch<T>(endpoint, options),
+        resolve: resolveChallenge,
+      });
+      // Park until the dialog resolves `settled` with the replay's result.
+      // Parking is what lets several concurrent gated requests share the single
+      // mounted dialog instead of each racing to open their own challenge. The
+      // cast is sound rather than convenient: the value that arrives is whatever
+      // this same `performFetch<T>` produced, and nothing else can reach it.
+      return settled as Promise<T>;
     }
 
     const status = error instanceof APIError ? error.status : undefined;
