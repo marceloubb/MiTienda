@@ -1598,6 +1598,178 @@ step's, since the two challenges are visual twins.
 the live session and every later request needs it; clearing there would log the
 user straight back out.
 
+## W5c Files Changed (PR 10 - tasks 8.1-8.2)
+
+| File | Change | Lines |
+|---|---|---|
+| `frontend/tests/totp-challenge.test.tsx` | **new** — four-scenario interaction suite, three green, one `it.fails` | +307 |
+| `docs/DEPLOYMENT.md` | gate row, replaced limitation, logout exemption, new resume-bug section | +12 / -3 |
+| `openspec/changes/.../tasks.md` | 8.1 evidence (left unchecked), 8.2 checked with evidence | +2 / -2 |
+| `openspec/changes/.../apply-progress.md` | this unit's evidence and open items | self-referential, see below |
+
+Total: 4 files. **326 authored lines excluding this log; 509 including it.** No
+production source changed.
+
+**The forecast missed by ~470 lines, and the 400-line review ceiling is breached
+on the strict reading.** The approved forecast was `~35`. Reported rather than
+smoothed over, with the breakdown given so a reviewer can judge it rather than
+take it on trust:
+
+| Group | Lines | Note |
+|---|---|---|
+| New test file | 307 | the deliverable: 4 scenarios, fetch-boundary harness, evidence notes |
+| `docs/DEPLOYMENT.md` | 15 | task 8.2, exactly as scoped |
+| `tasks.md` | 4 | two rows |
+| **Product + spec change** | **326** | under the 400 ceiling |
+| `apply-progress.md` | 183 | this log; the largest single block of prose in the unit |
+
+Three honest observations. The forecast treated "a test file and a docs edit" as
+if the test were a formality; 307 lines is what testing a four-state machine
+against a real fetch boundary actually costs, and that is where the miss went.
+**183 of the change is this artifact describing itself**, which is a poor trade
+and is the orchestrator's to weigh. And W5b's `Total: 5 files, 282` counted only
+source, so on the precedent used in this change the unit is **326 and under** the
+ceiling; on the strict reading it is **509 and over** it by 109. Both are recorded
+rather than picking the flattering one.
+
+This section is self-referential: the log's own line count changes whenever its
+figures are corrected. The 326 excludes it and is stable; the 509 was measured
+from `git diff --numstat` after the final edit and includes it.
+
+An earlier revision read "281 authored lines" and "267 lines" for the test file.
+Both were wrong — `Measure-Object -Line` under-reported the file, and the total
+omitted this artifact's own additions. Every figure above comes from
+`git diff --numstat`, re-measured after each edit.
+
+## W5c Verification Results (PR 10)
+
+| Command | Result |
+|---|---|
+| `npm run test` | **OK** — 150 passed + 1 expected fail, 151 total (was 147) |
+| `npm run lint` | **OK** — exit 0 |
+| `npx tsc --noEmit` | **OK** — exit 0 |
+| `npm run build` | **OK** — compiled successfully in 2.6s |
+
+No guard was adjusted. The three guards walk only `app/`, `components/` and/or
+`lib/`; `frontend/tests/` is not on any walk, so a new test file cannot move a
+count. That is a real finding rather than a coincidence: **no existing guard
+constrains what lives in `tests/`**, so nothing would have failed had this suite
+been written in a way that proved nothing.
+
+## W5c Evidence (PR 10 - tasks 8.1-8.2)
+
+### The load-bearing scenario is RED against shipped code, and it is a real defect
+
+W5b recorded, accurately, that the parked promise is deliberate: "Returning a
+never-settling promise is what lets several concurrent gated requests all resolve
+through the single mounted dialog." The consequence recorded was an *abandoned*
+gated request leaking. The unit missed the stronger consequence: **no gated
+request settles, ever** — including the successful one.
+
+`frontend/lib/api.ts:284-289`:
+
+```ts
+totpRequiredHandler(() => performFetch<T>(endpoint, options));
+return new Promise<never>(() => {});
+```
+
+`TOTPRequiredHandler` is `(retry: () => Promise<unknown>) => void`. The handler's
+return value is discarded by a `void` type, so the handler expression's type is
+`undefined` — which is precisely why W5b parked instead of returning it, as
+§W5b "The task's literal dispatch would have resolved a promise with `undefined`"
+documents. Parking solved the `undefined` problem by choosing never-settling over
+settling-wrongly, and `design.md` §Interfaces — which specifies
+`(retry) => Promise<unknown>` — was not followed.
+
+An executor that never calls `resolve` cannot be resumed by anything. The replay's
+result reaches only the dialog's own `await retry()`, which discards it. So
+`spec.md`'s "submitting a valid code **restores the session**" is half-met: the
+retry happens, the restore does not.
+
+Observed, not reasoned: `frontend/tests/totp-challenge.test.tsx` scenario 2 failed
+with `AssertionError: expected 'pending' to be 'resolved'` against unmodified
+source, while the same run showed the replay had already fired correctly —
+`profileCalls()` recorded `{ endpoint: '.../api/users/profile/', totp: '123456' }`
+and `getTOTPCode()` returned `'123456'`. The request carries the code. The caller
+does not resume. Those two facts together localise the defect to the park.
+
+Production symptom: `AuthProvider.loadProfile()` awaits `getProfile()` inside a
+`try`, so the hang lands in the `catch`, and `setIsLoading(false)` lives in the
+`finally` — which never runs. The SPA sits on its loading state permanently, while
+every later request succeeds because the code is stored. Sign-out still works,
+since it is the one exempt path.
+
+**Out of scope and not fixed.** W5c was bounded to tests and docs; a production
+fix would widen the change, so the defect is reported, documented in
+`docs/DEPLOYMENT.md`, and left in the tree.
+
+### The fix shape was established by probe, and the obvious one is wrong
+
+Reaching for the spec's phrasing, the natural fix is to give the handler a
+`Promise` return type and `return retry()` from the provider. **Probed, and it
+breaks scenario 3.** Calling `retry()` at dispatch time fires the replay before any
+code exists, so the gated request 401s immediately; and returning it directly
+rejects the parked caller on a wrong code, which is exactly what scenario 3
+requires not to happen. Observed: `AssertionError: expected 'rejected' to be
+'pending'` in the invalid-code scenario.
+
+The shape that works defers. The handler returns a promise the **dialog** resolves
+when its replay succeeds, and which stays pending on failure — parking on failure
+is a requirement of the spec, not an oversight, so the deferred promise must
+resolve-only and never reject. Probed in `lib/api.ts` + `lib/auth-context.tsx`, all
+four scenarios went green and `it.fails` reported `Error: Expect test to fail`.
+That result is what makes the defect report trustworthy: the assertion is
+satisfiable, so it is not a badly written test.
+
+Both probe files were restored afterwards. `lib/api.ts` returned to SHA-256
+`1D5240CCC9E6BDB862A6D5256A4A7C7B192A9928E51AA1BAAC013D501958DE3F`, byte-identical.
+`lib/auth-context.tsx` and `TotpChallengeDialog.tsx` restored clean, and each
+matches its pre-probe SHA-256 exactly **after LF normalization** —
+`5E6B3040C5E95A32CF1C8D0089CCF065993BFF9EFD0D945985053C7A629FC629` and
+`0268BB4DA85D22F5CE609721B126251AA9C731AA8386A057586DECD7C904CA7A`. **Why the
+normalization is stated rather than glossed:** `core.autocrlf=true`, so
+`git checkout --` rewrites LF to CRLF in the working tree. A naive hash comparison
+after restoring therefore reports a mismatch on two of the three files and invites
+the false conclusion that a probe leaked. `git status --porcelain` reported only
+the new test file as untracked, which is the authoritative check.
+
+### `it.fails` is a deliberate inversion, not a weakened assertion
+
+Scenario 2's body is the spec's requirement, unmodified. Only the pass criterion is
+inverted, so the requirement stays visible and cannot be lost, and the suite stays
+green so this unit can land. It **cannot pass vacuously**: the fix probe above
+demonstrated that Vitest reports `Error: Expect test to fail` the moment the
+caller resumes. The marker was observed to flip during this unit rather than being
+assumed to work.
+
+The alternative — leaving the test red — would have blocked the change on a
+defect its own scope forbids fixing. The third alternative, dropping scenario 2,
+would have hidden it. `it.fails` is the only option that reports the defect and
+still lands.
+
+### `fireEvent.submit`, because jsdom does not run the form-submission algorithm
+
+The first draft clicked the submit button. Scenario 2 failed with the caller still
+pending and the dialog's button label unchanged, which is the signature of a
+submit event that never fired. jsdom does not implement the interactive
+form-submission algorithm that converts a submit-button click into a `submit`
+event, so `fireEvent.click` cannot reach React's `onSubmit`. Switched to
+`fireEvent.submit(form)` on the form element, which dispatches the event the
+component actually listens for. The button's enabled state — the only thing the
+click would have contributed — is asserted separately, so no coverage was traded
+away. `@testing-library/user-event` is not a project dependency, so this is the
+available route rather than the preferred one.
+
+### A gated promise cannot be interrogated synchronously
+
+Scenarios 2 and 3 must assert "has not settled", and there is no synchronous way to
+ask a promise whether it is resolved. Both use a `status` flag flipped by
+`.then`/`.catch` on a tracked promise, then `await act(async () => {})` to drain
+the microtask queue before reading it. This is the strongest honest form of the
+claim available in jsdom: it proves nothing settled *across a microtask boundary*,
+not that nothing ever will. The header states that limit rather than letting the
+green test imply more than it proves.
+
 ## Verification Limits (carried forward)
 
 jsdom does not apply Tailwind's compiled output and `@theme` is build-time only. Nothing in this unit is browser verification. The radius swaps and elevation utilities in W6–W8 remain proven by build success plus manual inspection, never by computed style. Every verify report must restate this.
@@ -1606,6 +1778,11 @@ jsdom does not apply Tailwind's compiled output and `@theme` is build-time only.
 
 ## Open Items for the Orchestrator
 
+- **W5c found a shipped defect that only a test could find, and it is NOT fixed.** `frontend/lib/api.ts:284-289` parks a gated request with `new Promise<never>(() => {})` behind a `(retry) => void` handler, so the replay's result is discarded and **a gated caller's promise never settles, on success or failure**. `spec.md`'s "restores the session" is not met. Visible symptom: `AuthProvider.loadProfile()` hangs, its `finally` never runs, `isLoading` stays `true`, and the SPA sits on its loading state permanently — while every later request succeeds, because the code is stored. **Do not enable `DJANGO_2FA_ENFORCED=True` for browser sessions until this is fixed.** `docs/DEPLOYMENT.md` now says so. W5c was bounded to tests and docs, so this was reported, not repaired. The fix must defer — the handler returns a promise the dialog resolves when its replay succeeds, staying pending on failure; the obvious `return retry()` was probed and breaks the invalid-code scenario. See §W5c Evidence.
+- **`tasks.md` task 8.1 is deliberately left unchecked, and a verify report must read it that way.** Three of the four scenarios pass; the load-bearing one is written as `it.fails` with its assertion unmodified. A literal reading of `tasks.md` will show one unchecked task in a unit whose suite is green — that is the honest state, not an omission, and the unchecked box is what tells the next reader the requirement is unmet.
+- **A green `frontend` suite is no longer evidence that the TOTP challenge works.** The W5b open item — "no test mounts the component", "a verify report must not read W5b's green suite as evidence the challenge works" — is now discharged in the *opposite* direction: the suite mounts the component, and it found the flow broken. `150 passed | 1 expected fail` means three behaviours hold and the fourth is known-broken and tracked. **No verify report may describe the global challenge as working.**
+- **Stage the new file before settling.** `frontend/tests/totp-challenge.test.tsx` is **untracked**, and it is **307 of W5c's 326 authored lines** (509 counting this log). Staging it changes the measured total, not just its classification — the same wall W4, W6 and W7 each hit. It is staged in W5c's own commit, which resolves this item for W5c.
+- **W5c's forecast missed by ~470 lines and the 400 review ceiling is breached on the strict reading** (`~35` forecast, **509** measured by `git diff --numstat`; **326** excluding `apply-progress.md`, on W5b's own counting precedent). **This is the second unit in the change to need a `size:exception` on the strict count**, after W7. 307 of the 509 are one new test file and 183 are this progress log, so the *product* change is 326. Recorded so the orchestrator can rule on it rather than inherit it; see §W5c Files Changed. The real finding is the forecast: W5c was scoped as "a test file and a docs edit", and the assumption that testing a four-state machine was a formality is what the 307 lines spent disproving.
 - **Stage the new file before settling.** `frontend/tests/control-border.test.ts` is **untracked**, and this attempt's untracked exclusion covers only the 8 `openspec/changes/frontend-design-system-followups/**` planning artifacts. The new test therefore changes the untracked inventory, and a `settle` may reject the attempt as `untracked inventory changed` — the same condition W2 hit. `git add frontend/tests/control-border.test.ts` before settling so the measurement sees it as part of W4's diff. **This is now load-bearing twice:** the file is 159 of W4's 195 changed lines, so staging it changes the measured total, not just its classification.
 - **The `npm run dev` visual harness was not performed for W1, W2 or W4**; all three need a browser. For W4 the expected delta is a real, user-visible one — 15 control boundaries darken from `#c4c5d5` (1.218:1) to `#757684` (3.198:1) — so unlike W1 and W2 this is **not** a nil-delta claim that a build can stand in for. `sdd-verify` should treat the visual check on `/login`, `/checkout` and `/profile` as genuinely open, not discharged by the 65/65 suite.
 - **RESOLVED 2026-09-29 - `openspec/changes/frontend-design-system-followups/` is no longer untracked.** The item above was written when the planning artifacts had never been committed. They landed in `db14775` (`docs(sdd): add the frontend-design-system-followups planning artifacts`, 8 files, +2,522). The "separate docs commit" the item anticipated is the commit that now exists. The `openspec/` tree is fully tracked — 88 files before this change, not a repo where the directory is deliberately left unversioned.
@@ -1614,9 +1791,11 @@ jsdom does not apply Tailwind's compiled output and `@theme` is build-time only.
 - **RESOLVED 2026-09-29 - the maintainer approved `@source not "../tests";`.** The orchestrator flagged it as a project-level content-scan change arriving inside an elevation diff and asked for confirmation rather than inheriting it silently. The maintainer approved proceeding. It is retained, and its standing consequence is unchanged: a class literal that appears only in a test file no longer emits a utility. See deviation 23.
 - **W8's two claims are unenforced — no guard exists for this unit.** Task 6.1's AC is "Footer Focus Visibility", and nothing checks it. Adding a twelfth footer anchor without a focus ring fails no test, and `sdd-verify` would have to catch it by reading. The sharper risk is the ring **colour**: this unit deliberately departs from `DESIGN.md:223` to `ring-white` because the design's `#1E40AF` measures 2.00:1 on this surface. A future reader seeing `ring-white` where the design says `#1E40AF` would reasonably "correct" it back and silently ship a focus indicator that fails the requirement it was added to satisfy. Both are one-line guard risks. **Raised rather than added**, because W8's approved forecast carried no guard and widening scope is not the implementer's call; see §W8 Evidence for the measured contrast figures a guard would assert.
 - **W8 visual verification is outstanding and cannot be closed here.** No browser is available, and `:focus-visible` is specifically a real-keyboard-focus state that jsdom does not apply. Nothing in this unit observed a painted ring. The 2.00:1-versus-17.40:1 measurement is arithmetic about the colour values, not proof that a ring is visible on screen. This is the **fifth** consecutive unit carrying that item, and it is the one where it matters most: the entire point of the change is a focus indicator that a keyboard user can see.
-- **W5b ships a modal with no interaction test, and the gap is worse than the usual visual caveat.** The deliverable is a keyboard-driven dialog whose behaviour is a state machine: a gated request mounts it, a bad code keeps it open, a good code replays and resolves the original caller's promise. **No test in W5b mounts the component** — W5c task 8.1 adds `frontend/tests/totp-challenge.test.tsx`, and all four of its scenarios are unexercised until then. jsdom would also apply neither `autoFocus` nor `:focus-visible` to this input, so even that test cannot settle the focus behaviour. **A `sdd-verify` report must not read W5b's green suite as evidence the challenge works.** What W5b does prove is that the types compose, the tree builds, and the guards still hold.
+- **RESOLVED 2026-09-30 - W5b shipped a modal with no interaction test, and W5c's suite found it broken.** The item below was written when no test mounted the component; W5c added `frontend/tests/totp-challenge.test.tsx` and all four of its scenarios, and the load-bearing one is **RED against shipped code** — the parked caller never resumes. The warning it carried stands, now with the opposite conclusion: a green suite would have been misleading, and the green suite that exists includes an `it.fails`. **A `sdd-verify` report must not read 150/150 as evidence the challenge works.** jsdom still applies neither `autoFocus` nor `:focus-visible` to this input, so focus behaviour remains unverified.
+- **W5b shipped a modal with no interaction test, and the gap was worse than the usual visual caveat.** The deliverable is a keyboard-driven dialog whose behaviour is a state machine: a gated request mounts it, a bad code keeps it open, a good code replays and resolves the original caller's promise. **No test in W5b mounts the component** — W5c task 8.1 adds `frontend/tests/totp-challenge.test.tsx`, and all four of its scenarios were unexercised until then. jsdom would also apply neither `autoFocus` nor `:focus-visible` to this input, so even that test cannot settle the focus behaviour. **A `sdd-verify` report must not read W5b's green suite as evidence the challenge works.** What W5b does prove is that the types compose, the tree builds, and the guards still hold.
 - **W5b's guards must be reverted together with its source.** `control-border.test.ts` and `elevation-scale.test.ts` were adjusted to count a new component. Reverting only `api.ts`, `auth-context.tsx` and the dialog leaves the suite failing on counts that are correct for the new tree and wrong for the old one. The rollback boundary in `tasks.md` names all five files for this reason.
-- **W5b's parked promises are a deliberate design choice with a sharp edge.** `fetchAPI` returns a never-settling promise for a gated request when a handler is mounted. That is what makes one dialog serve a burst of parallel 401s, and it means **an abandoned gated request never settles** — no timeout, no rejection. If the dialog is dismissed by a route change rather than by entering a code, that caller's promise leaks for the life of the page. There is no cancel path by design (sign-out is the exit), so the edge is only reachable via navigation. Worth revisiting if `sdd-verify` finds a path that makes it common.
+- **W5b's parked promises are a deliberate design choice with a sharp edge, and W5c measured that the edge is worse than described.** `fetchAPI` returns a never-settling promise for a gated request when a handler is mounted. That is what makes one dialog serve a burst of parallel 401s, and it means **an abandoned gated request never settles** — no timeout, no rejection. **W5c corrected the scope of that edge: it is not only abandoned requests.** The successful path parks too, because the handler is typed `(retry) => void` and its result is discarded, so the replay never reaches the parked caller. The bullet below described a leak on the abandoned path; the defect is that there is no working path at all. See §W5c Evidence and `docs/DEPLOYMENT.md`.
+- **W5b's parked promises as originally described.** `fetchAPI` returns a never-settling promise for a gated request when a handler is mounted. That is what makes one dialog serve a burst of parallel 401s, and it means **an abandoned gated request never settles** — no timeout, no rejection. If the dialog is dismissed by a route change rather than by entering a code, that caller's promise leaks for the life of the page. There is no cancel path by design (sign-out is the exit), so the edge is only reachable via navigation.
 - **Task 7.7's deletion is deferred to the maintainer, not completed.** `app/login/page.tsx` still carries `TOTPChallengeStep`, `needsTOTP`, `handleTOTPVerified` and the `if (needsTOTP)` branch. That is the maintainer's decision (1A), recorded on the task, and the symbols are intentional rather than missed. **A verify report reading `tasks.md` literally will see an unchecked task 7.7 and must not treat it as an omission.**
 - **W5a's `settle` is blocked for the same reason as W6, W7 and W8** — Windows App Control refuses to execute `gentle-ai.exe`, so `sdd-attempt` is unavailable. W5a created no new file, so unlike W4, W6 and W7 there is nothing to stage and the `untracked inventory changed` rejection cannot arise. Its evidence rests on commit `db12ca3` and the sections above.
 - **W5a's exemption is path-scoped, and that scoping is now the security boundary rather than a convenience.** `TOTP_EXEMPT_PATHS` has exactly one entry, and every future entry needs the same justification: the endpoint must *reduce* exposure, not merely be inconvenient without a code. A future task that adds, say, `token/refresh/` to this allowlist would be adding a credential-issuing endpoint to a security exemption, and no test in the suite would object — `test_exempt_paths_resolve_to_logout_view` checks that each entry resolves to `LogoutView`, so a non-logout entry would fail there, but the failure would read as a URL problem rather than a security one. **Read that test's failure message as a security signal.**
