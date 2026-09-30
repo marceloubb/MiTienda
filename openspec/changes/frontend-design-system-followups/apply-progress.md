@@ -1318,9 +1318,22 @@ Measured with the WCAG relative-luminance formula against that background:
 | Candidate ring | Contrast vs `#1a1a1a` | 3:1 non-text floor |
 |---|---|---|
 | `#1E40AF` — design primary | **2.00:1** | **fails** |
-| `#00288e` — theme `--primary` | **2.60:1** | **fails** |
+| `#00288e` — theme `--primary` | **1.40:1** | **fails** |
 | `#757684` — design outline | 3.88:1 | passes |
 | `#FFFFFF` — white | **17.40:1** | **passes** |
+
+**CORRECTION 2026-09-30 (verify round 1, CRITICAL).** The `#00288e` row read
+**2.60:1** and that figure was false; the true ratio is **1.4040:1**. It was found by
+`verify-report.md`, not by inspection, and the orchestrator recomputed it independently
+in Node before accepting the finding. The operands were never in doubt — `globals.css:21`
+declares `--primary: #00288e` and `layout.tsx:38` declares the footer `bg-[#1a1a1a]` —
+only the arithmetic result was wrong, so this is not a rounding artefact. The other three
+rows of this table were re-derived in the same pass and are correct: `#1E40AF` 1.9954
+(rounded 2.00), `#757684` 3.8795 (rounded 3.88), `#FFFFFF` 17.4043 (rounded 17.40). The
+row's **verdict does not change**: 1.404 fails the 3:1 floor exactly as 2.60 did, and the
+candidate it evaluates was rejected in favour of the shipped `ring-white`. The defect was
+raised to CRITICAL anyway because a provably false number in an artifact that later
+verifiers trust cannot be waved through on the grounds that its conclusion survived.
 
 Applied literally, the design's focus ring is an indicator that does not meet the
 contrast floor for the requirement it was written to satisfy — AC: Footer Focus
