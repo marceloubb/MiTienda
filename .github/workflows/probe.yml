@@ -1,9 +1,0 @@
-name: probe
-on:
-  push:
-    branches: [feat/vibrant-redesign-slice5-2fa]
-jobs:
-  probe:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo ok
