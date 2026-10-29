@@ -28,6 +28,11 @@ services:
       DJANGO_EMAIL_BACKEND: "console"
       DATABASE_URL: "postgres://mitienda:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the root .env file}@db:5432/mitienda"
       DJANGO_SECURE_MODE: "False"
+      # 2FA gate. Defaults to enforced so the local stack matches the deploy
+      # topology; override with DJANGO_2FA_ENFORCED=False in the root .env file.
+      # Safe to leave on: users/authentication.py:72 gates only users with a
+      # confirmed TOTPDevice, so accounts without TOTP are unaffected.
+      DJANGO_2FA_ENFORCED: "${DJANGO_2FA_ENFORCED:-True}"
     depends_on:
       db:
         condition: service_healthy
