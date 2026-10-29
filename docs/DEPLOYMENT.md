@@ -2,6 +2,17 @@
 
 Production deployment reference for the MiTienda backend (Django / DRF, port 8000) and frontend (Next.js, port 3000). Every environment variable introduced by the security hardening change is listed below with its production value. Follow the enablement order to avoid lockout windows — every security switch is **off by default**, so a missing variable never takes the site down.
 
+## Pre-deploy verification
+
+One command runs every gate that must be green before deploying:
+
+```powershell
+.\verify.ps1              # backend (SQLite + PostgreSQL), frontend, compose
+.\verify.ps1 -BuildImages # also build both Docker images
+```
+
+It exits non-zero if any gate fails. The PostgreSQL leg runs inside the compose network, so start the stack first with `docker compose up -d`; without it that gate reports as skipped, never as passed.
+
 ## Environment variables
 
 | Variable | Default (dev) | Production value | Purpose |
