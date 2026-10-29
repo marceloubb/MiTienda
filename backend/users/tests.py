@@ -724,9 +724,14 @@ class TwoFAGateTests(TestCase):
     def test_gate_off_allows_request_without_code(self):
         self._confirmed_device()
 
-        response = self.client.get(
-            '/api/users/profile/', HTTP_AUTHORIZATION=f'Token {self.token.key}'
-        )
+        # Pinned rather than inherited: the local Docker stack sets
+        # DJANGO_2FA_ENFORCED=True, so an ambient default of False would make
+        # this assertion depend on how the suite was launched.
+        with self.settings(DJANGO_2FA_ENFORCED=False):
+            response = self.client.get(
+                '/api/users/profile/',
+                HTTP_AUTHORIZATION=f'Token {self.token.key}',
+            )
 
         self.assertEqual(response.status_code, 200)
 
