@@ -21,7 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { sileo } from "sileo";
 
 const inputClass =
-  "w-full rounded-lg border border-border bg-background py-2.5 pr-4 pl-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "w-full rounded-xl border border-control-border bg-surface-container-lowest py-2.5 pr-4 pl-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40";
 
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
@@ -94,7 +94,7 @@ function ProfileContent({ user }: { user: UserType }) {
       <h1 className="text-2xl font-bold text-foreground">Mi perfil</h1>
 
       {/* Encabezado */}
-      <Card className="mt-6 p-6">
+      <Card className="mt-6 rounded-2xl p-6 ring-outline-variant/70">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold text-primary">
@@ -117,7 +117,7 @@ function ProfileContent({ user }: { user: UserType }) {
       </Card>
 
       {/* Formulario */}
-      <Card className="mt-6 p-6">
+      <Card className="mt-6 rounded-2xl p-6 ring-outline-variant/70">
         <form onSubmit={handleSubmit} className="space-y-6">
           <section className="space-y-4">
             <h3 className="text-base font-bold text-foreground">
@@ -198,7 +198,7 @@ function ProfileContent({ user }: { user: UserType }) {
             </div>
           </section>
 
-          <section className="space-y-4 border-t border-border pt-6">
+          <section className="space-y-4 border-t border-outline-variant pt-6">
             <h3 className="text-base font-bold text-foreground">
               Dirección de envío
             </h3>
@@ -232,7 +232,7 @@ function ProfileContent({ user }: { user: UserType }) {
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="w-full rounded-xl border border-control-border bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40"
                   autoComplete="address-level2"
                 />
               </div>
@@ -246,7 +246,7 @@ function ProfileContent({ user }: { user: UserType }) {
                   name="postal_code"
                   value={formData.postal_code}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="w-full rounded-xl border border-control-border bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40"
                   autoComplete="postal-code"
                 />
               </div>
@@ -257,7 +257,7 @@ function ProfileContent({ user }: { user: UserType }) {
             type="submit"
             size="lg"
             disabled={isSaving}
-            className="w-full"
+            className="w-full bg-primary text-on-primary hover:bg-primary/90"
           >
             {isSaving ? (
               <>

@@ -112,7 +112,7 @@ export default function Navbar() {
   return (
     <header
       ref={headerRef}
-      className="sticky top-0 z-50 bg-[#1a1a1a] text-white shadow-lg"
+      className="sticky top-0 z-50 bg-[#1a1a1a] text-white shadow-level-2"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
@@ -142,12 +142,12 @@ export default function Navbar() {
                 placeholder="Buscar productos, herramientas, materiales..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg bg-surface-0 py-2.5 pr-12 pl-4 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-primary/50"
+                className="w-full rounded-xl bg-surface-0 py-2.5 pr-12 pl-4 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-primary/50"
               />
               <button
                 type="submit"
                 aria-label="Buscar"
-                className="absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md bg-primary text-white transition-colors outline-none hover:bg-primary/80 focus-visible:ring-3 focus-visible:ring-white/50"
+                className="absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-xl bg-primary text-white transition-colors outline-none hover:bg-primary/80 focus-visible:ring-3 focus-visible:ring-white/50"
               >
                 <Search className="size-4" />
               </button>
@@ -182,7 +182,7 @@ export default function Navbar() {
               <>
                 <Link
                   href="/cart"
-                  className="relative flex items-center gap-2 rounded-lg bg-white/10 px-2.5 py-2 transition-colors hover:bg-white/20 sm:px-4"
+                  className="relative flex items-center gap-2 rounded-xl bg-white/10 px-2.5 py-2 transition-colors hover:bg-white/20 sm:px-4"
                 >
                   <ShoppingCart className="size-5" />
                   <span className="hidden text-sm sm:inline">Carrito</span>
@@ -216,7 +216,7 @@ export default function Navbar() {
                   onClick={logout}
                   title="Cerrar sesión"
                   aria-label="Cerrar sesión"
-                  className="flex size-10 items-center justify-center rounded-lg transition-colors outline-none hover:bg-white/10 hover:text-primary focus-visible:ring-3 focus-visible:ring-white/50"
+                  className="flex size-10 items-center justify-center rounded-xl transition-colors outline-none hover:bg-white/10 hover:text-primary focus-visible:ring-3 focus-visible:ring-white/50"
                 >
                   <LogOut className="size-5" />
                 </button>
@@ -224,7 +224,7 @@ export default function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/80"
+                className="rounded-xl bg-primary px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/80"
               >
                 Ingresar
               </Link>
@@ -235,7 +235,7 @@ export default function Navbar() {
               ref={menuToggleRef}
               aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
               aria-expanded={mobileMenuOpen}
-              className="flex size-10 items-center justify-center rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-white/50 lg:hidden"
+              className="flex size-10 items-center justify-center rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-white/50 lg:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? (
@@ -260,7 +260,7 @@ export default function Navbar() {
                 placeholder="Buscar productos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg bg-surface-0 px-4 py-2.5 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-primary/50"
+                className="w-full rounded-xl bg-surface-0 px-4 py-2.5 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-primary/50"
               />
             </form>
             <nav className="flex flex-col gap-3 text-sm">

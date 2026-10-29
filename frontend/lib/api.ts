@@ -1,18 +1,32 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
-type FetchOptions = RequestInit;
+type FetchOptions = RequestInit & {
+  /**
+   * One-off TOTP code for this single request. Used by the login probe, where
+   * the code is not established as the session code yet. Stripped before the
+   * options reach `fetch` so it never leaks into the request payload.
+   */
+  totpCode?: string;
+};
 
 // Error de API con detalle estructurado. `fields` contiene los errores por
-// campo del backend (DRF 400), p. ej. { username: ["Ya existe."] }.
+// campo del backend (DRF 400), p. ej. { username: ["Ya existe."] }. `code`
+// es el identificador de máquina que el backend adjunta a algunos errores;
+// hoy lo usa la gate de 2FA, que responde 401 con code === 'totp_required'.
 export class APIError extends Error {
   status?: number;
   fields?: Record<string, string[]>;
+  code?: string;
 
-  constructor(message: string, details?: { status?: number; fields?: Record<string, string[]> }) {
+  constructor(
+    message: string,
+    details?: { status?: number; fields?: Record<string, string[]>; code?: string },
+  ) {
     super(message);
     this.name = 'APIError';
     this.status = details?.status;
     this.fields = details?.fields;
+    this.code = details?.code;
   }
 }
 
@@ -71,6 +85,109 @@ const NON_RETRYABLE_ENDPOINTS = [
   '/users/logout/',
 ];
 
+// --- TOTP (H10) -------------------------------------------------------------
+//
+// Backend: when DJANGO_2FA_ENFORCED is on, every token-authenticated request
+// from a user with a confirmed TOTP device must carry the current code in the
+// `X-TOTP` header. A missing/invalid code is a 401 whose body is
+// { detail: 'Código TOTP requerido', code: 'totp_required' }.
+//
+// The code is held in module memory only: never in a cookie, localStorage or
+// sessionStorage, so an XSS cannot read it at rest and the browser drops it on
+// reload. It lives exactly as long as the authenticated session and is cleared
+// on logout.
+
+// Credential endpoints never carry X-TOTP: the second factor belongs to an
+// already-established session, so sending it there is meaningless to the
+// backend and would leak the code on every login attempt.
+const NO_TOTP_HEADER_ENDPOINTS = ['/users/login/', '/users/register/'];
+
+let totpCode: string | null = null;
+
+/** Store the session TOTP code and send it as `X-TOTP` on authenticated calls. */
+export function setTOTPCode(code: string): void {
+  totpCode = code;
+}
+
+/** Forget the TOTP code (logout, or a code the backend rejected). */
+export function clearTOTPCode(): void {
+  totpCode = null;
+}
+
+/** Current session TOTP code, or null. Exposed for tests/diagnostics only. */
+export function getTOTPCode(): string | null {
+  return totpCode;
+}
+
+/** True when `error` is the backend's 2FA gate asking for a second factor. */
+export function isTOTPCodeRequired(error: unknown): boolean {
+  return error instanceof APIError && error.status === 401 && error.code === 'totp_required';
+}
+
+// --- Global 2FA challenge ---------------------------------------------------
+//
+// The login page resolves the gate inline (its own `TOTPChallengeStep`), because
+// at that point no session exists yet and the challenge is a step of the login
+// form rather than an interruption. Every OTHER surface can be gated
+// mid-session: a cart request, a profile save, an admin page. If each of those
+// had to own a challenge, no authenticated surface could be the only resolver —
+// and a user in a fresh tab whose cookie outlived their TOTP code would be
+// locked out of the app entirely, with no way back.
+//
+// So the API client raises the gate to whoever registered a handler, and replays
+// the original request once a code is supplied. What crosses the boundary is a
+// `TOTPChallenge`: the one-shot replay plus the caller parked behind it. Both
+// are closures the handler controls; the client keeps no reference beyond the
+// dispatch, because they are only valid while the dialog that owns them is
+// mounted.
+
+/**
+ * One gated request, parked until the challenge resolves it.
+ *
+ * `settled` is the ORIGINAL caller's promise — `getCart()` has to come back with
+ * cart data, not `undefined`. It is resolve-only and never rejects, because the
+ * spec requires a wrong code to leave the prompt open and the session unset: a
+ * failed attempt must re-prompt, never surface as a caller failure.
+ *
+ * `replay` is the rejected request's own replay, one-shot.
+ *
+ * `resolve` hands the parked caller the replay's value. Only the dialog calls
+ * it, and only once its replay resolved — i.e. once the backend accepted the
+ * code.
+ */
+export interface TOTPChallenge {
+  readonly settled: Promise<unknown>;
+  replay: () => Promise<unknown>;
+  resolve: (value: unknown) => void;
+}
+
+type TOTPRequiredHandler = (challenge: TOTPChallenge) => void;
+
+let totpRequiredHandler: TOTPRequiredHandler | null = null;
+
+/**
+ * Register a handler invoked when the backend answers 401 `totp_required` on any
+ * request. Returns an unregister function for effect cleanup. Mirrors
+ * `onTokenChange`'s contract exactly: a single module-level slot, last
+ * registration wins, unregistering only clears if still the same handler.
+ */
+export function onTOTPRequired(handler: TOTPRequiredHandler): () => void {
+  totpRequiredHandler = handler;
+  return () => {
+    if (totpRequiredHandler === handler) totpRequiredHandler = null;
+  };
+}
+
+/**
+ * Resolve the `X-TOTP` header for an endpoint: an explicit one-off code wins
+ * over the session code, and the credential endpoints never get one.
+ */
+function totpHeaderFor(endpoint: string, oneOffCode?: string): Record<string, string> {
+  if (NO_TOTP_HEADER_ENDPOINTS.some((path) => endpoint.endsWith(path))) return {};
+  const code = oneOffCode ?? totpCode;
+  return code ? { 'X-TOTP': code } : {};
+}
+
 // A burst of parallel 401s (e.g. profile + cart) shares one in-flight refresh:
 // the backend rotates the token on every refresh, so concurrent refreshes would
 // invalidate each other. Every waiting request retries once with the cookie the
@@ -87,6 +204,9 @@ async function refreshToken(): Promise<boolean> {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            // The refresh endpoint is token-authenticated, so a gated session
+            // must present its code here too or the rotation 401s.
+            ...(totpCode ? { 'X-TOTP': totpCode } : {}),
           },
           credentials: 'include',
         });
@@ -102,13 +222,15 @@ async function refreshToken(): Promise<boolean> {
 }
 
 async function performFetch<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
+  const { totpCode: oneOffCode, ...init } = options;
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...init.headers,
+    ...totpHeaderFor(endpoint, oneOffCode),
   };
 
   const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
+    ...init,
     headers,
     credentials: 'include',
   });
@@ -117,9 +239,18 @@ async function performFetch<T>(endpoint: string, options: FetchOptions = {}): Pr
     const body = await response.json().catch(() => null);
 
     if (body && typeof body === 'object') {
-      const detail = (body as { detail?: unknown }).detail;
-      if (typeof detail === 'string') {
-        throw new APIError(detail, { status: response.status });
+      const payload = body as {
+        detail?: unknown;
+        code?: unknown;
+        message?: unknown;
+        error?: unknown;
+      };
+      // Machine-readable error id when the backend sends one: the 2FA gate
+      // answers 401 { detail, code: 'totp_required' }.
+      const code = typeof payload.code === 'string' ? payload.code : undefined;
+
+      if (typeof payload.detail === 'string') {
+        throw new APIError(payload.detail, { status: response.status, code });
       }
 
       const fields = Object.fromEntries(
@@ -129,15 +260,28 @@ async function performFetch<T>(endpoint: string, options: FetchOptions = {}): Pr
         ),
       );
       if (Object.keys(fields).length > 0) {
-        throw new APIError(formatFieldMessage(fields), { status: response.status, fields });
+        throw new APIError(formatFieldMessage(fields), { status: response.status, code, fields });
       }
     }
 
+    // Message conventions used by this backend: `message` (logout) and `error`
+    // (token refresh, both 2FA endpoints). Read both so the Spanish message
+    // the backend wrote always reaches the UI.
+    const payload = (body && typeof body === 'object' ? body : {}) as {
+      message?: unknown;
+      error?: unknown;
+      code?: unknown;
+    };
     const message =
-      body && typeof body === 'object' && typeof (body as { message?: unknown }).message === 'string'
-        ? (body as { message: string }).message
-        : 'Error en la petición';
-    throw new APIError(message, { status: response.status });
+      typeof payload.message === 'string'
+        ? payload.message
+        : typeof payload.error === 'string'
+          ? payload.error
+          : 'Error en la petición';
+    throw new APIError(message, {
+      status: response.status,
+      code: typeof payload.code === 'string' ? payload.code : undefined,
+    });
   }
 
   return response.json();
@@ -147,6 +291,40 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
   try {
     return await performFetch<T>(endpoint, options);
   } catch (error) {
+    // Intercept the 2FA gate BEFORE the refresh policy. A `totp_required` 401
+    // means the session is valid but the second factor is missing, so
+    // refreshing would 401 identically and tear the session down.
+    if (isTOTPCodeRequired(error)) {
+      // The login page handles its own challenge (no session exists yet, so it
+      // calls the endpoints directly rather than through this path). If a login
+      // probe ever did route here with no handler mounted, rethrow unchanged and
+      // let the caller decide — swallowing it would break a working flow.
+      if (!totpRequiredHandler) throw error;
+      // Park this caller behind a resolve-only deferred. The client keeps the
+      // executor and hands the handler only the resolver, so a handler that
+      // returns `undefined` — the `(retry) => void` signature this path used to
+      // expose — can never become this caller's value.
+      let resolveChallenge!: (value: unknown) => void;
+      const settled = new Promise<unknown>((resolve) => {
+        resolveChallenge = resolve;
+      });
+      // Hand over the one-shot replay together with that resolver. The handler
+      // decides when to call the replay (after the user enters a code), and the
+      // client keeps no reference, so a dismissed dialog cannot replay a stale
+      // request later.
+      totpRequiredHandler({
+        settled,
+        replay: () => performFetch<T>(endpoint, options),
+        resolve: resolveChallenge,
+      });
+      // Park until the dialog resolves `settled` with the replay's result.
+      // Parking is what lets several concurrent gated requests share the single
+      // mounted dialog instead of each racing to open their own challenge. The
+      // cast is sound rather than convenient: the value that arrives is whatever
+      // this same `performFetch<T>` produced, and nothing else can reach it.
+      return settled as Promise<T>;
+    }
+
     const status = error instanceof APIError ? error.status : undefined;
     const canRetry =
       status === 401 && !NON_RETRYABLE_ENDPOINTS.some((path) => endpoint.endsWith(path));
@@ -225,13 +403,35 @@ export async function register(data: {
 }
 
 export async function logout() {
-  return fetchAPI<{ message: string }>('/users/logout/', {
-    method: 'POST',
-  });
+  // The backend 2FA gate now exempts `/users/logout/` (see
+  // `TOTP_EXEMPT_PATHS` in `users/authentication.py`), so this request no longer
+  // needs the code at all and a gated user can always sign out.
+  //
+  // The code is still cleared only AFTER the request is sent, and that ordering
+  // is kept deliberately. `/users/logout/` is in `NON_RETRYABLE_ENDPOINTS`, so a
+  // transient failure here does not retry; clearing first would drop the code
+  // from a session the server may still hold, and the user would land on a page
+  // that thinks it signed them out while the token stays valid until it expires.
+  // The exemption removed the reason the code was required here — it did not
+  // change which order is safer.
+  try {
+    return await fetchAPI<{ message: string }>('/users/logout/', {
+      method: 'POST',
+    });
+  } finally {
+    // The code belongs to the session that is ending: drop it so it is never
+    // attached to the next session's requests.
+    clearTOTPCode();
+  }
 }
 
-export async function getProfile() {
-  return fetchAPI<User>('/users/profile/');
+/**
+ * GET /users/profile/. `totp` sends a one-off code with this request only; the
+ * login page uses it to probe the session right after login, before the code
+ * has been accepted as the session-wide TOTP code.
+ */
+export async function getProfile(params?: { totp?: string }) {
+  return fetchAPI<User>('/users/profile/', params?.totp ? { totpCode: params.totp } : {});
 }
 
 export async function updateProfile(data: Partial<User>) {
@@ -348,6 +548,36 @@ export async function listStaffUsers() {
   return fetchAPI<StaffUser[]>('/staff/users/');
 }
 
+// Two-factor authentication (H10, admin only — the backend enforces the role).
+// Both endpoints run through the standard fetchAPI path, so a rejected call
+// rejects with an APIError carrying the backend's own Spanish message:
+// 400 'Ya existe un dispositivo 2FA confirmado.' / 'El dispositivo ya está
+// confirmado.' / 'Código TOTP inválido.', 403 for a non-admin.
+
+/** Device material issued by a successful enrollment. */
+export interface TwoFAEnrollment {
+  device_id: number;
+  /** Base32 secret, safe to show so it can be typed by hand. */
+  secret: string;
+  /** `otpauth://totp/...` URI — the payload a QR code would encode. */
+  provisioning_uri: string;
+}
+
+/** POST /users/2fa/enroll/ — starts enrollment and returns the device material. */
+export async function enroll2FA() {
+  return fetchAPI<TwoFAEnrollment>('/users/2fa/enroll/', {
+    method: 'POST',
+  });
+}
+
+/** POST /users/2fa/confirm/ — activates a pending device with a valid code. */
+export async function confirm2FA(deviceId: number, code: string) {
+  return fetchAPI<{ confirmed: boolean }>('/users/2fa/confirm/', {
+    method: 'POST',
+    body: JSON.stringify({ device_id: deviceId, code }),
+  });
+}
+
 // Types
 export interface Product {
   id: number;
@@ -390,6 +620,23 @@ export type OrderStatus =
   | 'discrepancy';
 
 export type DiscrepancyReason = 'missing' | 'damaged';
+
+// Append-only order event trail (backend OrderEvent): the single source of
+// truth for an order's timeline (design D4). Timestamps come from the server
+// clock; the frontend never invents them.
+export type OrderEventType =
+  | 'created'
+  | 'advanced'
+  | 'discrepancy'
+  | 'resolved'
+  | 'cancelled';
+
+export interface OrderEvent {
+  event_type: OrderEventType;
+  from_status: OrderStatus | null;
+  to_status: OrderStatus;
+  timestamp: string;
+}
 
 export interface User {
   id: number;
@@ -452,6 +699,7 @@ export interface Order {
   payment_method: string;
   notes: string;
   items: OrderItem[];
+  events: OrderEvent[];
   created_at: string;
   updated_at: string;
 }

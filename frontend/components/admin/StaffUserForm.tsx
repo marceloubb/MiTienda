@@ -33,7 +33,7 @@ const ROLE_HINTS: Record<StaffRole, string> = {
 // El proyecto no tiene componente Input/Label/Select en components/ui;
 // se usan elementos nativos con el estilo visual del resto del sitio.
 const fieldClasses =
-  "h-9 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50";
+  "h-9 w-full rounded-xl border border-control-border bg-surface-container-lowest px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40 disabled:opacity-50";
 
 interface StaffUserFormProps {
   /** Callback tras crear un usuario con éxito (refresca el resumen del staff). */
@@ -82,7 +82,7 @@ export default function StaffUserForm({ onCreated }: StaffUserFormProps) {
   }
 
   return (
-    <Card>
+    <Card className="rounded-2xl ring-outline-variant/70">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <UserPlus className="size-4 text-primary" />
@@ -166,13 +166,17 @@ export default function StaffUserForm({ onCreated }: StaffUserFormProps) {
           {error && (
             <p
               role="alert"
-              className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="rounded-lg bg-error-container px-3 py-2 text-xs text-on-error-container"
             >
               {error}
             </p>
           )}
 
-          <Button type="submit" disabled={isSubmitting} className="w-full">
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-primary text-on-primary hover:bg-primary/90"
+          >
             {isSubmitting && <Loader2 className="animate-spin" />}
             {isSubmitting ? "Creando…" : "Crear usuario"}
           </Button>

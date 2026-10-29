@@ -22,6 +22,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sileo } from "sileo";
+import { cn } from "cn";
 
 // Mismos valores que app/checkout/page.tsx (PAYMENT_METHODS).
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -64,8 +65,85 @@ export default function OrdersPage() {
   return <OrdersContent />;
 }
 
+// Filtros por pestaña (design.md): Todos / En curso / Entregados / Cancelados.
+// "En curso" agrupa los estados activos de la cadena; discrepancy solo aparece
+// en "Todos" (no tiene pestaña propia honesta).
+type OrderTab = "all" | "active" | "delivered" | "cancelled";
+
+const ORDER_TABS: { id: OrderTab; label: string }[] = [
+  { id: "all", label: "Todos" },
+  { id: "active", label: "En curso" },
+  { id: "delivered", label: "Entregados" },
+  { id: "cancelled", label: "Cancelados" },
+];
+
+const ACTIVE_STATUSES = ["pending", "processing", "ready", "shipped"];
+
+function matchesTab(order: Order, tab: OrderTab): boolean {
+  switch (tab) {
+    case "all":
+      return true;
+    case "active":
+      return ACTIVE_STATUSES.includes(order.status);
+    case "delivered":
+      return order.status === "delivered";
+    case "cancelled":
+      return order.status === "cancelled";
+  }
+}
+
+function OrderHistoryTabs({
+  orders,
+  tab,
+  onTabChange,
+}: {
+  orders: Order[];
+  tab: OrderTab;
+  onTabChange: (tab: OrderTab) => void;
+}) {
+  return (
+    <nav aria-label="Filtrar pedidos" className="mt-6">
+      <div className="flex flex-wrap gap-2">
+        {ORDER_TABS.map((option) => {
+          const count = orders.filter((order) =>
+            matchesTab(order, option.id)
+          ).length;
+          const isSelected = tab === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onTabChange(option.id)}
+              aria-pressed={isSelected}
+              className={cn(
+                "inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+                isSelected
+                  ? "bg-primary text-primary-foreground shadow-level-1"
+                  : "bg-surface-container-lowest text-on-surface-variant ring-1 ring-outline-variant hover:bg-surface-container-low hover:text-on-surface"
+              )}
+            >
+              {option.label}
+              <span
+                className={cn(
+                  "rounded-full px-1.5 text-[11px] font-bold",
+                  isSelected
+                    ? "bg-on-primary/20 text-on-primary"
+                    : "bg-surface-container-high text-on-surface-variant"
+                )}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
 function OrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [tab, setTab] = useState<OrderTab>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -128,6 +206,8 @@ function OrdersContent() {
     );
   }
 
+  const visibleOrders = orders.filter((order) => matchesTab(order, tab));
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Breadcrumb */}
@@ -157,8 +237,14 @@ function OrdersContent() {
         </p>
       </div>
 
+      <OrderHistoryTabs
+        orders={orders}
+        tab={tab}
+        onTabChange={setTab}
+      />
+
       {orders.length === 0 ? (
-        <Card className="mt-8 w-full p-8 text-center sm:p-12">
+        <Card className="mt-8 w-full rounded-2xl p-8 text-center sm:p-12">
           <PackageOpen className="mx-auto size-10 text-muted-foreground/60" />
           <h2 className="mt-4 text-lg font-semibold text-foreground">
             Todavía no tenés pedidos
@@ -173,9 +259,19 @@ function OrdersContent() {
             Ir al catálogo
           </Link>
         </Card>
+      ) : visibleOrders.length === 0 ? (
+        <Card className="mt-8 w-full rounded-2xl p-8 text-center">
+          <PackageOpen className="mx-auto size-10 text-muted-foreground/60" />
+          <h2 className="mt-4 text-lg font-semibold text-foreground">
+            No hay pedidos en esta sección
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Probá con otra pestaña para ver tus demás pedidos.
+          </p>
+        </Card>
       ) : (
         <div className="mt-6 space-y-4">
-          {orders.map((order) => (
+          {visibleOrders.map((order) => (
             <OrderCard key={order.id} order={order} />
           ))}
         </div>
@@ -189,7 +285,7 @@ function OrderCard({ order }: { order: Order }) {
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <Card className="p-5">
+    <Card className="rounded-2xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">
@@ -212,6 +308,21 @@ function OrderCard({ order }: { order: Order }) {
         </span>
       </div>
 
+      {/* CTA al seguimiento (orders/[id]) */}
+      <div className="mt-3">
+        <Link
+          href={`/orders/${order.id}`}
+          className={buttonVariants({
+            variant: "outline",
+            size: "sm",
+            className: "gap-1.5",
+          })}
+        >
+          Ver seguimiento
+          <ChevronRight className="size-4" />
+        </Link>
+      </div>
+
       {/* Detalle expandible */}
       <details className="group mt-3">
         <summary className="flex w-full cursor-pointer list-none items-center gap-1.5 rounded-md text-sm font-medium text-primary outline-none select-none marker:hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 [&::-webkit-details-marker]:hidden">
@@ -219,13 +330,13 @@ function OrderCard({ order }: { order: Order }) {
           <ChevronDown className="ml-auto size-4 transition-transform duration-200 group-open:rotate-180" />
         </summary>
 
-        <div className="mt-4 space-y-4 border-t border-border pt-4">
+        <div className="mt-4 space-y-4 border-t border-outline-variant pt-4">
           <section aria-label={`Productos del pedido ${order.id}`}>
             <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Package className="size-4 text-primary" />
               Productos
             </h3>
-            <ul className="mt-2 divide-y divide-border">
+            <ul className="mt-2 divide-y divide-outline-variant">
               {items.map((item) => (
                 <li
                   key={item.id}
@@ -332,7 +443,7 @@ function OrdersSkeleton() {
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-xl bg-card p-5 ring-1 ring-border"
+            className="rounded-2xl bg-surface-container-lowest p-5 ring-1 ring-outline-variant"
           >
             <div className="flex items-center justify-between gap-4">
               <Skeleton className="h-5 w-40" aria-hidden="true" />

@@ -6,6 +6,7 @@ import { addToCart } from "@/lib/api";
 import { ShoppingCart, Tag } from "lucide-react";
 import { sileo } from "sileo";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,13 +52,13 @@ export default function ProductCard({ product }: ProductCardProps) {
         ? "text-stock"
         : product.stock > 0
           ? "text-stock-low"
-          : "text-offer",
+          : "text-error",
     dot:
       product.stock > 10
         ? "bg-stock"
         : product.stock > 0
           ? "bg-stock-low"
-          : "bg-offer",
+          : "bg-error",
     label:
       product.stock > 10
         ? "En stock"
@@ -67,22 +68,24 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-xl bg-card text-sm text-card-foreground transition-all duration-200 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/30">
+    <div className="group flex h-full flex-col overflow-hidden rounded-2xl bg-surface-container-lowest text-sm text-on-surface shadow-level-1 ring-1 ring-outline-variant transition-all duration-200 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/30">
       <Link
         href={`/products/${product.id}`}
-        className="relative block aspect-[4/3] overflow-hidden bg-surface-1"
+        className="relative block aspect-[4/3] overflow-hidden bg-surface-container-low"
       >
         {product.is_on_sale && product.discount_percentage > 0 && (
-          <Badge className="absolute top-2 left-2 z-10 gap-1 bg-offer text-white">
+          <Badge className="absolute top-2 left-2 z-10 gap-1 bg-secondary-container text-on-secondary-container">
             <Tag className="size-3" />
             -{product.discount_percentage}%
           </Badge>
         )}
         {product.image ? (
-          <img
+          <Image
             src={product.image}
             alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            fill
+            sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">

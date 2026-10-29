@@ -1,8 +1,9 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { User, Cart, UserRole, APIError } from '@/lib/api';
-import { getProfile, getCart, logout as apiLogout, onTokenChange } from '@/lib/api';
+import { User, Cart, UserRole, APIError, type TOTPChallenge } from '@/lib/api';
+import { getProfile, getCart, logout as apiLogout, onTokenChange, onTOTPRequired } from '@/lib/api';
+import TotpChallengeDialog from '@/components/TotpChallengeDialog';
 
 interface AuthContextType {
   user: User | null;
@@ -66,6 +67,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Global 2FA gate. Registered next to the token-change effect so both
+  // session-level signals the API client raises are owned by the provider, not
+  // by whichever component happened to make the failing request. Mounting the
+  // resolver here is what guarantees no authenticated surface is the only one
+  // that can answer `totp_required`.
+  //
+  // The state holds the whole `TOTPChallenge`, not just its replay closure: the
+  // replay alone cannot settle the caller parked behind it, so storing only that
+  // leaves every gated promise pending forever. The first gated request wins the
+  // dialog; a later concurrent one replaces it.
+  const [totpChallenge, setTotpChallenge] = useState<TOTPChallenge | null>(null);
+  useEffect(() => {
+    return onTOTPRequired((challenge) => {
+      // Wrapped in an arrow, as in W5b: React treats a bare function argument as
+      // a state updater and would call it.
+      setTotpChallenge(() => challenge);
+    });
+  }, []);
+
   function login(userData: User) {
     // The backend already set the httpOnly cookie in the login/register
     // response; here we only restore the client state.
@@ -108,6 +128,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{ user, cart, isLoading, login, logout, updateCart, refreshProfile }}
     >
       {children}
+      {/* The dialog is the session's only resolver for the 2FA gate. It renders
+          after `children` so it stacks above any page-level surface, and it
+          carries no cancel: a gated session's way out is `logout()`, which W5a
+          made reachable without a code. `onResolved` is not a cancel — it fires
+          only once the parked caller has been resumed, and it is what stops a
+          resolved session from sitting behind a blocking overlay. */}
+      <TotpChallengeDialog
+        open={totpChallenge !== null}
+        challenge={totpChallenge}
+        onResolved={() => setTotpChallenge(null)}
+      />
     </AuthContext.Provider>
   );
 }

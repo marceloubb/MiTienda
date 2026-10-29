@@ -67,7 +67,7 @@ export default function StaffUserList({ reloadKey = 0 }: StaffUserListProps) {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="rounded-2xl ring-outline-variant/70">
         <CardHeader>
           <Skeleton className="h-5 w-56" aria-hidden="true" />
           <Skeleton className="h-4 w-40" aria-hidden="true" />
@@ -83,9 +83,9 @@ export default function StaffUserList({ reloadKey = 0 }: StaffUserListProps) {
 
   if (error) {
     return (
-      <Card>
+      <Card className="rounded-2xl ring-outline-variant/70">
         <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
-          <AlertTriangle className="size-10 text-destructive" />
+          <AlertTriangle className="size-10 text-error" />
           <p className="text-sm font-medium text-foreground">{error}</p>
           <Button variant="outline" size="sm" onClick={refresh}>
             <RotateCcw />
@@ -97,7 +97,7 @@ export default function StaffUserList({ reloadKey = 0 }: StaffUserListProps) {
   }
 
   return (
-    <Card>
+    <Card className="rounded-2xl ring-outline-variant/70">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="size-4 text-primary" />
@@ -120,24 +120,26 @@ export default function StaffUserList({ reloadKey = 0 }: StaffUserListProps) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground">
+                <tr className="border-b border-outline-variant text-xs text-on-surface-variant">
                   <th className="py-2 pr-3 font-medium">Usuario</th>
                   <th className="py-2 pr-3 font-medium">Email</th>
                   <th className="py-2 pr-3 font-medium">Rol</th>
                   <th className="py-2 font-medium">Staff</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-outline-variant">
                 {users.map((user) => (
-                  <tr key={user.id}>
+                  <tr key={user.id} className="transition-colors hover:bg-surface-container-low/60">
                     <td className="py-2.5 pr-3 font-medium text-foreground">
                       {user.username}
                     </td>
                     <td className="py-2.5 pr-3 text-muted-foreground">
                       {user.email}
                     </td>
-                    <td className="py-2.5 pr-3 text-foreground">
-                      {ROLE_LABELS[user.role] ?? user.role}
+                    <td className="py-2.5 pr-3">
+                      <span className="inline-block rounded-full bg-primary-container/15 px-2.5 py-0.5 text-xs font-semibold text-on-primary-container">
+                        {ROLE_LABELS[user.role] ?? user.role}
+                      </span>
                     </td>
                     <td className="py-2.5 text-muted-foreground">
                       {user.is_staff ? "Sí" : "No"}

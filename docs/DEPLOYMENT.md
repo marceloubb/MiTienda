@@ -14,7 +14,7 @@ Production deployment reference for the MiTienda backend (Django / DRF, port 800
 | `DJANGO_ADMIN_URL` | `admin/` | unguessable path ending in `/`, e.g. `backstage/` | Django admin mount point. Never advertise it. |
 | `ADMIN_ALLOWED_IPS` | unset (unrestricted) | comma-separated IPs of operations staff | Admin IP allowlist; requests from other IPs receive 403. |
 | `DJANGO_TOKEN_TTL_HOURS` | `24` | `24` (or lower) | DRF auth-token lifetime. The frontend auto-refreshes before expiry, so a tighter window is safe. |
-| `DJANGO_2FA_ENFORCED` | `False` | `True` only after every admin has enrolled a device | Enforces TOTP via the `X-TOTP` header on token-authenticated requests from users with a confirmed device. |
+| `DJANGO_2FA_ENFORCED` | `False` | `True` only after every admin has enrolled a device | Enforces TOTP via the `X-TOTP` header on token-authenticated requests from users with a confirmed device. The SPA handles the gate with a global prompt that replays the rejected request and restores the session (see "SPA TOTP resume"). The only exempt path is `POST /api/users/logout/`. |
 | `DATABASE_URL` | unset (SQLite) | `postgres://user:pass@host:5432/mitienda` | PostgreSQL connection. Any value that does not start with `postgres://` falls back to SQLite (dev default). |
 | `DJANGO_EMAIL_BACKEND` | `console` | SMTP backend | Outbound email (password resets, notifications). |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api` | `https://api.example.com/api` (or same-origin `/api`) | Frontend API base URL. Must match the browser-visible API origin: the frontend CSP allows this origin in `connect-src`. |
@@ -33,7 +33,7 @@ Follow this sequence. Each step is self-contained and verifiable before the next
 2. **Basics** — set `DJANGO_SECRET_KEY` and `DJANGO_ALLOWED_HOSTS`; keep `DJANGO_DEBUG=False`. Verify startup with `manage.py check` and a full login flow.
 3. **Admin URL + IP allowlist** — set `DJANGO_ADMIN_URL` and `ADMIN_ALLOWED_IPS`. Verify the admin loads only from allowlisted IPs and returns 403 elsewhere.
 4. **Token TTL** — set `DJANGO_TOKEN_TTL_HOURS` (default 24 is dev-safe). Verify the frontend refresh flow: an expired token rotates on the next 401 without a user-visible logout.
-5. **2FA** — with the gate still off, every admin calls `POST /api/users/2fa/enroll/`, stores the returned `secret`/`provisioning_uri` in their authenticator app, then confirms with `POST /api/users/2fa/confirm/` (`device_id` + `code`). Only when every admin has a confirmed device, set `DJANGO_2FA_ENFORCED=True`.
+5. **2FA** — with the gate still off, every admin calls `POST /api/users/2fa/enroll/`, stores the returned `secret`/`provisioning_uri` in their authenticator app, then confirms with `POST /api/users/2fa/confirm/` (`device_id` + `code`). Only when every admin has a confirmed device, set `DJANGO_2FA_ENFORCED=True` — after reading "SPA TOTP resume" below for what an operator will see in the browser once the gate is on.
 6. **Secure mode** — after confirming TLS at the edge, set `DJANGO_SECURE_MODE=True`. Verify the site over HTTPS with no mixed-content warnings and no redirect loops.
 
 ### 2FA gate consequence (read before step 5)
@@ -41,7 +41,24 @@ Follow this sequence. Each step is self-contained and verifiable before the next
 With `DJANGO_2FA_ENFORCED=True`, every token-authenticated request from a user with a confirmed device must carry a fresh TOTP code in the `X-TOTP` header; otherwise the API returns 401 with `totp_required`. Consequences:
 
 - Scripted and API-tool clients send `X-TOTP` with each request (the 30-second window is re-verified per request).
-- The SPA frontend has **no 2FA UI yet** (documented limitation). A gated admin using the SPA will receive 401s because the browser client cannot supply fresh codes. Keep the gate off while SPA sessions rely on the browser, or gate only after a frontend TOTP prompt exists.
+- The SPA frontend **does** have a 2FA prompt. Any gated request — profile, cart, checkout — opens one global challenge dialog on the current screen, with no redirect to the login route. A wrong code shows an error and keeps the dialog open; a correct code replays the failed request, resumes the caller it interrupted, and stores the code for the rest of the session.
+- **`POST /api/users/logout/` is exempt from the gate.** Without the exemption a gated user could never sign out, because the browser has no fresh code at that moment. The exempt set is one constant, `TOTP_EXEMPT_PATHS = frozenset({'/api/users/logout/'})`, in `backend/users/authentication.py`; add paths there rather than special-casing clients.
+
+### SPA TOTP resume (read before enabling the gate)
+
+What an operator will see in the browser, with the gate on:
+
+1. Any gated request — profile, cart, checkout — opens one challenge dialog on the current screen. No redirect to the login route.
+2. A wrong code drops it from memory, shows an error, and keeps the prompt open. The interrupted request stays parked and the session is not established, so a failed attempt changes nothing.
+3. A correct code replays the failed request, resolves the caller that was parked when the gate rejected it, and stores the code for the rest of the session. The page that triggered the challenge finishes loading and the dialog closes.
+
+The API client parks the rejected caller behind a promise that only a successful replay can resolve — never by rejecting, which is what keeps step 2 from failing the request instead of re-prompting. `clearTOTPCode()` deliberately does not run on success: from that point the code belongs to the live session and every later request needs it.
+
+The dialog carries no cancel. A user who cannot produce a code still has `logout()`, which the exempt path above keeps reachable — that is the way out of a gated session, not dismissal.
+
+All of it is pinned by `frontend/tests/totp-challenge.test.tsx`, which drives the four scenarios through the real `fetch` boundary. The load-bearing one asserts that the original caller resumes **with the data it asked for**, not merely that a second request went out. It was previously carried as `it.fails` because a gated caller could not be resumed at all; that is fixed, and the assertion is live.
+
+Scripted and API-tool clients never touch this code path and can be gated today.
 
 Reversing the gate (`DJANGO_2FA_ENFORCED=False`) restores prior behavior immediately — devices stay enrolled and can be re-enabled later.
 

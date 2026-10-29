@@ -111,7 +111,7 @@ export default function InventoryView() {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="rounded-2xl ring-outline-variant/70">
         <CardHeader>
           <Skeleton className="h-5 w-56" aria-hidden="true" />
           <Skeleton className="h-4 w-40" aria-hidden="true" />
@@ -127,9 +127,9 @@ export default function InventoryView() {
 
   if (error) {
     return (
-      <Card>
+      <Card className="rounded-2xl ring-outline-variant/70">
         <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
-          <AlertTriangle className="size-10 text-destructive" />
+          <AlertTriangle className="size-10 text-error" />
           <p className="text-sm font-medium text-foreground">{error}</p>
           <Button variant="outline" size="sm" onClick={refresh}>
             <RotateCcw />
@@ -152,7 +152,7 @@ export default function InventoryView() {
   ).length;
 
   return (
-    <Card>
+    <Card className="rounded-2xl ring-outline-variant/70">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Boxes className="size-4 text-primary" />
@@ -165,21 +165,21 @@ export default function InventoryView() {
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border border-border bg-muted/40 p-3">
+          <div className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <TrendingUp className="size-3.5" />
               Pedidos ({FLOW_DAYS} días)
             </p>
             <p className="mt-1 text-xl font-semibold text-foreground">{flowOrders.length}</p>
           </div>
-          <div className="rounded-lg border border-border bg-muted/40 p-3">
+          <div className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <PackageOpen className="size-3.5" />
               Unidades ({FLOW_DAYS} días)
             </p>
             <p className="mt-1 text-xl font-semibold text-foreground">{sumOrderUnits(flowOrders)}</p>
           </div>
-          <div className="rounded-lg border border-border bg-muted/40 p-3">
+          <div className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <MapPinned className="size-3.5" />
               En tránsito
@@ -199,18 +199,18 @@ export default function InventoryView() {
           ) : (
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground">
+                <tr className="border-b border-outline-variant text-xs text-on-surface-variant">
                   <th className="py-2 pr-3 font-medium">Producto</th>
                   <th className="py-2 pr-3 font-medium">Stock</th>
                   <th className="py-2 pr-3 font-medium">Movimiento ({FLOW_DAYS} días)</th>
                   <th className="py-2 font-medium">Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-outline-variant">
                 {sortedProducts.map((product) => {
                   const label = stockLabel(product);
                   return (
-                    <tr key={product.id}>
+                    <tr key={product.id} className="transition-colors hover:bg-surface-container-low/60">
                       <td className="py-2.5 pr-3 font-medium text-foreground">
                         {product.name}
                       </td>
@@ -225,11 +225,11 @@ export default function InventoryView() {
                         {label === null ? (
                           <span className="text-xs text-muted-foreground">Disponible</span>
                         ) : label === "Sin stock" ? (
-                          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                          <span className="rounded-full bg-error-container px-2.5 py-0.5 text-xs font-semibold text-on-error-container">
                             {label}
                           </span>
                         ) : (
-                          <span className="rounded-full bg-stock-low/10 px-2 py-0.5 text-xs font-medium text-stock-low">
+                          <span className="rounded-full bg-stock-low/15 px-2.5 py-0.5 text-xs font-semibold text-stock-low">
                             {label}
                           </span>
                         )}

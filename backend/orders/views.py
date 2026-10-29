@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
-from .models import Cart, CartItem, Order, OrderItem
+from .models import Cart, CartItem, Order, OrderEvent, OrderItem
 from products.models import Product
 from .serializers import (
     CartSerializer, CartItemSerializer, AddToCartSerializer,
@@ -174,6 +174,15 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                     notes=data.get('notes', '')
                 )
 
+                # Initial event: every order trail starts with `created`.
+                OrderEvent.objects.create(
+                    order=order,
+                    event_type='created',
+                    from_status=None,
+                    to_status='pending',
+                    timestamp=order.created_at,
+                )
+
                 # Crear items del pedido
                 for cart_item in cart.items.all():
                     OrderItem.objects.create(
@@ -231,8 +240,15 @@ class StaffOrderViewSet(viewsets.ReadOnlyModelViewSet):
                     {'error': 'Transición no permitida para este rol y estado.'},
                     status=status.HTTP_403_FORBIDDEN
                 )
+            from_status = order.status
             order.status = target
             order.save(update_fields=['status', 'updated_at'])
+            OrderEvent.objects.create(
+                order=order,
+                event_type='advanced',
+                from_status=from_status,
+                to_status=target,
+            )
         return Response(StaffOrderSerializer(order).data)
 
     @action(detail=True, methods=['post'])
@@ -275,6 +291,12 @@ class StaffOrderViewSet(viewsets.ReadOnlyModelViewSet):
                 'pre_discrepancy_status', 'discrepancy_reason',
                 'status', 'updated_at',
             ])
+            OrderEvent.objects.create(
+                order=order,
+                event_type='discrepancy',
+                from_status=order.pre_discrepancy_status,
+                to_status='discrepancy',
+            )
         return Response(StaffOrderSerializer(order).data)
 
     @action(detail=True, methods=['post'], url_path='resolve-discrepancy')
@@ -294,13 +316,20 @@ class StaffOrderViewSet(viewsets.ReadOnlyModelViewSet):
                     {'error': 'Solo se puede resolver un pedido con discrepancia.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            order.status = order.pre_discrepancy_status or 'pending'
+            restored_status = order.pre_discrepancy_status or 'pending'
+            order.status = restored_status
             order.pre_discrepancy_status = None
             order.discrepancy_reason = ''
             order.save(update_fields=[
                 'status', 'pre_discrepancy_status',
                 'discrepancy_reason', 'updated_at',
             ])
+            OrderEvent.objects.create(
+                order=order,
+                event_type='resolved',
+                from_status='discrepancy',
+                to_status=restored_status,
+            )
         return Response(StaffOrderSerializer(order).data)
 
     @action(detail=True, methods=['post'])
@@ -320,7 +349,14 @@ class StaffOrderViewSet(viewsets.ReadOnlyModelViewSet):
                     {'error': 'No se puede cancelar un pedido entregado o ya cancelado.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            from_status = order.status
             _restore_order_stock(order)
             order.status = 'cancelled'
             order.save(update_fields=['status', 'updated_at'])
+            OrderEvent.objects.create(
+                order=order,
+                event_type='cancelled',
+                from_status=from_status,
+                to_status='cancelled',
+            )
         return Response(StaffOrderSerializer(order).data)

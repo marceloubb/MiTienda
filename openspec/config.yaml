@@ -14,8 +14,8 @@ projects:
     framework: Django TestCase
   - path: frontend/
     stack: Next.js 16.3.5 / React 19.2.8 / TypeScript 5 / Tailwind 4 / ESLint 9
-    test_command: "—"
-    framework: "—"
+    test_command: "npm run test"
+    framework: "Vitest + jsdom + React Testing Library"
 
 # Phase rules (defaults)
 phases:

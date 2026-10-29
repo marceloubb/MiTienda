@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -116,7 +117,7 @@ export default function ProductDetailPage() {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Skeleton className="h-5 w-56" aria-hidden="true" />
-        <div className="mt-6 overflow-hidden rounded-2xl bg-card ring-1 ring-border md:grid md:grid-cols-2">
+        <div className="mt-6 overflow-hidden rounded-2xl bg-card shadow-level-1 ring-1 ring-border md:grid md:grid-cols-2">
           <Skeleton className="aspect-[4/3] w-full rounded-none md:aspect-auto md:h-full" aria-hidden="true" />
           <div className="space-y-4 p-8">
             <Skeleton className="h-3 w-24" aria-hidden="true" />
@@ -171,13 +172,13 @@ export default function ProductDetailPage() {
         ? "text-stock"
         : product.stock > 0
           ? "text-stock-low"
-          : "text-offer",
+          : "text-error",
     dot:
       product.stock > 10
         ? "bg-stock"
         : product.stock > 0
           ? "bg-stock-low"
-          : "bg-offer",
+          : "bg-error",
     label:
       product.stock > 10
         ? `En stock (${product.stock} unidades)`
@@ -213,21 +214,23 @@ export default function ProductDetailPage() {
         </ol>
       </nav>
 
-      <Card className="mt-6 gap-0 py-0 md:grid md:grid-cols-2">
+      <Card className="mt-6 gap-0 rounded-2xl py-0 md:grid md:grid-cols-2">
         {/* Imagen */}
-        <div className="relative aspect-[4/3] overflow-hidden bg-surface-1 md:aspect-auto md:h-full">
+        <div className="relative aspect-[4/3] overflow-hidden bg-surface-container-high md:aspect-auto md:h-full">
           {hasDiscount && (
-            <Badge className="absolute top-4 left-4 z-10 gap-1 bg-offer text-white">
+            <Badge className="absolute top-4 left-4 z-10 gap-1 bg-secondary-container text-on-secondary-container">
               <Tag className="size-3" />
               -{product.discount_percentage}% OFF
             </Badge>
           )}
           {product.image ? (
-            <img
+            <Image
               src={product.image}
               alt={product.name}
-              loading="lazy"
-              className="h-full w-full object-cover"
+              fill
+              preload
+              sizes="(min-width: 768px) 50vw, 100vw"
+              className="object-cover"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
@@ -303,7 +306,7 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Subtotal */}
-          <div className="rounded-lg bg-surface-1 p-4">
+          <div className="rounded-2xl bg-surface-container-high p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Total</span>
               <span className="text-xl font-bold text-foreground">

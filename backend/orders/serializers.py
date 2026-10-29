@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Cart, CartItem, Order, OrderItem
+from .models import Cart, CartItem, Order, OrderEvent, OrderItem
 from products.models import Product
 from products.serializers import ProductListSerializer
 
@@ -51,6 +51,14 @@ class UpdateCartItemSerializer(serializers.Serializer):
         return attrs
 
 
+class OrderEventSerializer(serializers.ModelSerializer):
+    """One step of the order event trail (read-only, ascending by timestamp)."""
+
+    class Meta:
+        model = OrderEvent
+        fields = ['event_type', 'from_status', 'to_status', 'timestamp']
+
+
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     subtotal = serializers.ReadOnlyField()
@@ -62,6 +70,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
+    events = OrderEventSerializer(many=True, read_only=True)
     status_display = serializers.ReadOnlyField()
 
     class Meta:
@@ -70,7 +79,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'id', 'status', 'status_display', 'total',
             'shipping_name', 'shipping_address', 'shipping_city',
             'shipping_postal_code', 'shipping_phone',
-            'payment_method', 'notes', 'items',
+            'payment_method', 'notes', 'items', 'events',
             'created_at', 'updated_at'
         ]
 

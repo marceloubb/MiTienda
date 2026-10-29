@@ -5,14 +5,17 @@ from django.core.cache import cache
 from django.db import connection, IntegrityError
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase, TransactionTestCase
+from django.urls import Resolver404, resolve
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient, APIRequestFactory
 
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
+from users.authentication import TOTP_EXEMPT_PATHS
 from users.models import UserProfile
 from users.permissions import IsAdmin, IsBodega, IsDespacho, IsStaffRole
+from users.views import LogoutView
 
 
 class ProfileUpdateTests(TestCase):
@@ -726,6 +729,45 @@ class TwoFAGateTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
+    def test_exempt_paths_resolve_to_logout_view(self):
+        # Asserts against the production constant, not a literal copy: a test
+        # that hardcoded the path would still pass if the allowlist went empty.
+        for path in sorted(TOTP_EXEMPT_PATHS):
+            with self.subTest(path=path):
+                try:
+                    func = resolve(path).func
+                except Resolver404:
+                    self.fail(
+                        f'exempt path does not resolve: {path} — a dead entry in '
+                        'TOTP_EXEMPT_PATHS is a false promise of exemption'
+                    )
+                self.assertIs(func.view_class, LogoutView)
+
+    def test_gated_user_can_logout(self):
+        self._confirmed_device()
+
+        with self.settings(DJANGO_2FA_ENFORCED=True):
+            response = self.client.post(
+                '/api/users/logout/', HTTP_AUTHORIZATION=f'Token {self.token.key}'
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Token.objects.filter(user=self.admin).exists())
+
+    def test_gated_user_still_gated_on_profile(self):
+        # Deliberately close to test_missing_totp_code_rejected_with_totp_required,
+        # and kept for that reason: it pins the exemption to the allowlist. If the
+        # gate is ever widened instead of path-scoped, this is the test that fails.
+        self._confirmed_device()
+
+        with self.settings(DJANGO_2FA_ENFORCED=True):
+            response = self.client.get(
+                '/api/users/profile/', HTTP_AUTHORIZATION=f'Token {self.token.key}'
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.data.get('code'), 'totp_required')
 
 
 class EmailUniquenessSerializerTests(TestCase):

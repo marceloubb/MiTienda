@@ -1,9 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Ban, CheckCircle2, Loader2, RotateCcw } from "lucide-react";
+import {
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  Loader2,
+  Lock,
+  RotateCcw,
+  X,
+} from "lucide-react";
+import { cn } from "cn";
 import { sileo } from "sileo";
-import { cancelOrder, getStaffOrders, resolveDiscrepancy, type Order } from "@/lib/api";
+import {
+  cancelOrder,
+  flagDiscrepancy,
+  getStaffOrders,
+  resolveDiscrepancy,
+  type DiscrepancyReason,
+  type Order,
+} from "@/lib/api";
 import { OrderStatusBadge } from "@/lib/order-status";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,7 +101,7 @@ export default function DiscrepancyPanel() {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="rounded-2xl ring-outline-variant/70">
         <CardHeader>
           <Skeleton className="h-5 w-52" aria-hidden="true" />
           <Skeleton className="h-4 w-36" aria-hidden="true" />
@@ -100,10 +116,10 @@ export default function DiscrepancyPanel() {
   }
 
   return (
-    <Card>
+    <Card className="rounded-2xl ring-outline-variant/70">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="size-4 text-destructive" />
+          <AlertTriangle className="size-4 text-error" />
           Discrepancias pendientes
         </CardTitle>
         <CardDescription>
@@ -114,7 +130,7 @@ export default function DiscrepancyPanel() {
       <CardContent>
         {error ? (
           <div className="flex flex-col items-center gap-2 py-6 text-center">
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-error">{error}</p>
             <Button variant="outline" size="sm" onClick={refresh}>
               <RotateCcw />
               Reintentar
@@ -122,11 +138,11 @@ export default function DiscrepancyPanel() {
           </div>
         ) : orders.length === 0 ? (
           <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            <CheckCircle2 className="size-4 text-stock" />
+            <CheckCircle2 className="size-4 text-on-secondary-container" />
             No hay pedidos con discrepancia.
           </div>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-outline-variant">
             {orders.map((order) => (
               <li
                 key={order.id}
@@ -141,7 +157,7 @@ export default function DiscrepancyPanel() {
                     {order.customer || order.shipping_name || "—"} · Total $
                     {parseFloat(order.total).toFixed(2)}
                   </p>
-                  <p className="mt-1 inline-block rounded-md bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
+                  <p className="mt-1 inline-block rounded-full bg-error-container px-2.5 py-0.5 text-xs font-semibold text-on-error-container">
                     {REASON_LABELS[order.discrepancy_reason ?? ""] ??
                       order.discrepancy_reason ??
                       "Sin motivo"}
@@ -149,8 +165,9 @@ export default function DiscrepancyPanel() {
                 </div>
                 <div className="flex shrink-0 gap-1.5">
                   <Button
-                    variant="secondary"
+                    variant="default"
                     size="sm"
+                    className="bg-on-secondary-container text-on-secondary hover:bg-on-secondary-container/90"
                     disabled={pendingIds.has(order.id)}
                     onClick={() => handleResolve(order)}
                   >
@@ -160,6 +177,7 @@ export default function DiscrepancyPanel() {
                   <Button
                     variant="destructive"
                     size="sm"
+                    className="bg-error-container text-on-error-container hover:bg-error-container/80"
                     disabled={pendingIds.has(order.id)}
                     onClick={() => handleCancel(order)}
                   >
@@ -174,5 +192,181 @@ export default function DiscrepancyPanel() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+const REASON_OPTIONS: {
+  value: DiscrepancyReason;
+  title: string;
+  description: string;
+}[] = [
+  {
+    value: "missing",
+    title: "missing (Stock faltante)",
+    description:
+      "El producto no se encuentra en el estante físico indicado o el stock del sistema no coincide.",
+  },
+  {
+    value: "damaged",
+    title: "damaged (Producto dañado)",
+    description: "Caja golpeada, sello roto o daño estético en la unidad encontrada.",
+  },
+];
+
+// Modal de reporte de discrepancia (bodega/admin). Solo envía el motivo que el
+// backend acepta (missing|damaged); la orden queda en estado "discrepancy"
+// hasta que un administrador la resuelva o cancele. Honestidad (D1): no hay
+// campos decorativos que el API no persista.
+export function DiscrepancyModal({
+  order,
+  onClose,
+  onFlagged,
+}: {
+  order: Order | null;
+  onClose: () => void;
+  onFlagged?: () => void;
+}) {
+  const [reason, setReason] = useState<DiscrepancyReason>("missing");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!order) {
+    return null;
+  }
+
+  async function handleSubmit() {
+    if (!order) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const updated = await flagDiscrepancy(order.id, reason);
+      sileo.success({
+        title: "Discrepancia marcada",
+        description: `El pedido #${updated.id} quedó bloqueado por "${reason}".`,
+      });
+      onFlagged?.();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "No se pudo marcar la discrepancia.";
+      setError(message);
+      sileo.error({ title: "No se pudo marcar la discrepancia", description: message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/50 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="discrepancy-modal-title"
+        className="w-full max-w-md rounded-2xl bg-surface-container-lowest p-6 shadow-level-2 ring-1 ring-outline-variant"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-error-container">
+              <AlertTriangle className="size-5 text-error" />
+            </div>
+            <div className="min-w-0">
+              <h2
+                id="discrepancy-modal-title"
+                className="font-heading text-base font-bold text-foreground"
+              >
+                Reportar discrepancia
+              </h2>
+              <p className="text-sm text-on-surface-variant">
+                Pedido #{order.id} · {order.customer || order.shipping_name || "—"}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="Cerrar modal"
+            onClick={onClose}
+            className="flex size-9 shrink-0 items-center justify-center rounded-xl text-on-surface-variant transition-colors hover:bg-surface-container hover:text-foreground"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <fieldset className="mt-5 space-y-2">
+          <legend className="text-sm font-semibold text-foreground">
+            Motivo reconocido por el backend
+          </legend>
+          {REASON_OPTIONS.map((option) => (
+            <label
+              key={option.value}
+              className={cn(
+                "flex cursor-pointer items-start gap-3 rounded-xl p-3 ring-1 transition-colors",
+                reason === option.value
+                  ? "bg-primary-container/15 ring-primary/40"
+                  : "bg-surface-container-low ring-transparent hover:bg-surface-container"
+              )}
+            >
+              <input
+                type="radio"
+                name="discrepancy-reason"
+                value={option.value}
+                checked={reason === option.value}
+                onChange={() => setReason(option.value)}
+                className="mt-1 accent-primary"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-foreground">
+                  {option.title}
+                </span>
+                <span className="block text-xs text-on-surface-variant">
+                  {option.description}
+                </span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        <div className="mt-4 flex items-start gap-2 rounded-xl bg-error-container/40 p-3">
+          <Lock className="mt-0.5 size-4 shrink-0 text-error" />
+          <p className="text-xs leading-relaxed text-on-surface-variant">
+            La orden pasará a estado discrepancy (bloqueada): se suspende el flujo
+            hasta que un administrador la resuelva o cancele con restauración de
+            stock.
+          </p>
+        </div>
+
+        {error && (
+          <p
+            role="alert"
+            className="mt-3 rounded-lg bg-error-container px-3 py-2 text-xs text-on-error-container"
+          >
+            {error}
+          </p>
+        )}
+
+        <div className="mt-5 flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            disabled={isSubmitting}
+            onClick={onClose}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            className="flex-1 bg-error text-on-error hover:bg-error/90"
+            disabled={isSubmitting}
+            onClick={() => void handleSubmit()}
+          >
+            {isSubmitting && <Loader2 className="animate-spin" />}
+            {isSubmitting ? "Bloqueando..." : "Confirmar y bloquear"}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

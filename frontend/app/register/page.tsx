@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 const inputClass =
-  "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "w-full rounded-xl border border-control-border bg-surface-container-lowest px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/40";
 
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
@@ -68,7 +68,7 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <Card className="gap-6 p-8">
+        <Card className="gap-6 rounded-2xl p-8 ring-outline-variant/70">
           <div className="text-center">
             <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10">
               <ShoppingBag className="size-7 text-primary" />
@@ -86,7 +86,7 @@ export default function RegisterPage() {
               <div
                 role="alert"
                 aria-live="polite"
-                className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+                className="flex items-start gap-2 rounded-lg bg-error-container p-3 text-sm text-on-error-container"
               >
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                 <span>{error}</span>
@@ -196,7 +196,7 @@ export default function RegisterPage() {
               type="submit"
               size="lg"
               disabled={isLoading}
-              className="w-full"
+              className="w-full bg-primary text-on-primary hover:bg-primary/90"
             >
               {isLoading ? (
                 <>
