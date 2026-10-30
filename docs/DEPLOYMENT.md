@@ -42,10 +42,49 @@ Follow this sequence. Each step is self-contained and verifiable before the next
 
 1. **PostgreSQL** — set `DATABASE_URL`, run `migrate`, then migrate existing data (procedure below).
 2. **Basics** — set `DJANGO_SECRET_KEY` and `DJANGO_ALLOWED_HOSTS`; keep `DJANGO_DEBUG=False`. Verify startup with `manage.py check` and a full login flow.
-3. **Admin URL + IP allowlist** — set `DJANGO_ADMIN_URL` and `ADMIN_ALLOWED_IPS`. Verify the admin loads only from allowlisted IPs and returns 403 elsewhere.
+3. **Admin URL + IP allowlist** — set `DJANGO_ADMIN_URL` and `ADMIN_ALLOWED_IPS`. Verify the admin loads only from allowlisted IPs and returns 403 elsewhere. The admin also demands a confirmed TOTP device on every request, independently of `DJANGO_2FA_ENFORCED` — read "Admin 2FA gate" below before locking yourself out.
 4. **Token TTL** — set `DJANGO_TOKEN_TTL_HOURS` (default 24 is dev-safe). Verify the frontend refresh flow: an expired token rotates on the next 401 without a user-visible logout.
-5. **2FA** — with the gate still off, every admin calls `POST /api/users/2fa/enroll/`, stores the returned `secret`/`provisioning_uri` in their authenticator app, then confirms with `POST /api/users/2fa/confirm/` (`device_id` + `code`). Only when every admin has a confirmed device, set `DJANGO_2FA_ENFORCED=True` — after reading "SPA TOTP resume" below for what an operator will see in the browser once the gate is on.
+5. **2FA** — on a fresh database the first admin is bootstrapped from the terminal with `manage.py totp_enroll <username>` (see "Admin 2FA gate" below); the API endpoint cannot do it because it requires an admin profile that does not exist yet. After that, every admin calls `POST /api/users/2fa/enroll/`, stores the returned `secret`/`provisioning_uri` in their authenticator app, then confirms with `POST /api/users/2fa/confirm/` (`device_id` + `code`). Only when every admin has a confirmed device, set `DJANGO_2FA_ENFORCED=True` — after reading "SPA TOTP resume" below for what an operator will see in the browser once the gate is on.
 6. **Secure mode** — after confirming TLS at the edge, set `DJANGO_SECURE_MODE=True`. Verify the site over HTTPS with no mixed-content warnings and no redirect loops.
+
+### Admin 2FA gate (always on)
+
+`backend/mitienda/urls.py` swaps the admin site class for
+`ConfirmedDeviceAdminSite`, which is `OTPAdminSite` plus one extra requirement:
+the device that verified the login must be confirmed. `OTPMiddleware` supplies
+`request.user.otp_device` and `is_verified()`.
+
+This is **not** controlled by `DJANGO_2FA_ENFORCED`. The admin is the more
+privileged surface, so the requirement is unconditional:
+
+- A staff user with no confirmed device cannot reach the admin, even with the
+  correct password: the login form asks for a code, and `has_permission`
+  refuses the session afterwards.
+- `django-otp` on its own would accept an unconfirmed device — its
+  `from_persistent_id` does not filter by `confirmed` and `verify_token`
+  ignores the flag. The API gate in `users/authentication.py` only trusts
+  confirmed devices, so the admin must not be the weaker one.
+
+Bootstrap a fresh database from the terminal. The API enrollment endpoint
+cannot do it: it requires an admin profile, which does not exist yet.
+
+```powershell
+cd backend
+.venv\Scripts\python.exe manage.py totp_enroll <username>
+```
+
+The command prints a provisioning URI and the base32 secret, and promotes the
+account to the `admin` role. Scan it, then confirm with the code the app shows:
+
+```powershell
+.venv\Scripts\python.exe manage.py totp_enroll <username> --code 123456
+```
+
+Re-running without `--code` reuses the pending device, so the secret you already
+scanned stays valid. `--reset` discards every device for that user and enrolls a
+new one.
+
+Pinned by `backend/users/test_admin_2fa.py`.
 
 ### 2FA gate consequence (read before step 5)
 

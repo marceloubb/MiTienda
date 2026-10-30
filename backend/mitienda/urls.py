@@ -5,6 +5,17 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from orders.urls import staff_router
+from mitienda.admin_site import ConfirmedDeviceAdminSite
+
+
+# The DRF 2FA gate only covers API requests (users.authentication). The Django
+# admin is the more privileged surface, so it needs the same requirement: swap
+# the site class so admin access also demands a verified OTP device.
+# django-otp documents exactly this assignment. The instance keeps the name
+# 'admin' assigned by AdminSite.__init__, so URL namespaces and templates are
+# unchanged. Users without a confirmed device are denied; enroll one with
+# `python manage.py totp_enroll <username>`.
+admin.site.__class__ = ConfirmedDeviceAdminSite
 
 
 @api_view(['GET'])
